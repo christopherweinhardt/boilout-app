@@ -1,0 +1,95 @@
+{
+    "type": "modal",
+    "title": {
+        "type": "plain_text",
+        "text": "Submit Boilout",
+        "emoji": true
+    },
+    "submit": {
+        "type": "plain_text",
+        "text": "Submit",
+        "emoji": true
+    },
+    "close": {
+        "type": "plain_text",
+        "text": "Cancel",
+        "emoji": true
+    },
+    "callback_id": "boilout_submit",
+    "blocks": [
+        {
+            "type": "input",
+            "block_id": "fryer_name",
+            "element": {
+                "type": "static_select",
+                "placeholder": {
+                    "type": "plain_text",
+                    "text": "Select a machine",
+                    "emoji": true
+                },
+                "options": [],
+                "action_id": "machine-select"
+            },
+            "label": {
+                "type": "plain_text",
+                "text": "Machine",
+                "emoji": true
+            }
+        },
+        {
+            "type": "input",
+            "block_id": "boilout_date",
+            "element": {
+                "type": "datepicker",
+                "initial_date": "2025-09-01",
+                "placeholder": {
+                    "type": "plain_text",
+                    "text": "Select a date",
+                    "emoji": true
+                },
+                "action_id": "boilout-date-input"
+            },
+            "label": {
+                "type": "plain_text",
+                "text": "Boilout Date",
+                "emoji": true
+            }
+        },
+        {
+            "type": "section",
+            "text": {
+                "type": "plain_text",
+                "text": " "
+            },
+            "block_id": "more_data",
+            "accessory": {
+                "type": "checkboxes",
+                "action_id": "cookmode-action",
+                "options": [
+                    {
+                        "value": "change_cookmode",
+                        "text": {
+                            "type": "plain_text",
+                            "text": "Was the cook mode changed?"
+                        },
+                        "description": {
+                            "type": "mrkdwn",
+                            "text": "Changed from spicy to regular, or vice-versa."
+                        }
+                    },
+                    {
+                        "value": "not_inuse",
+                        "text": {
+                            "type": "mrkdwn",
+                            "text": "Is this machine *no longer* in use?"
+                        },
+                        "description": {
+                            "type": "mrkdwn",
+                            "text": "Stored away down the hall."
+                        }
+                    }
+                ]
+            }
+        }
+    ]
+}

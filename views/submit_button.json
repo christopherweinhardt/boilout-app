@@ -1,0 +1,18 @@
+[
+    {
+        "type": "actions",
+        "elements": [
+            {
+                "type": "button",
+                "text": {
+                    "type": "plain_text",
+                    "text": "Submit Boilout",
+                    "emoji": true
+                },
+                "style": "primary",
+                "value": "submit_boilout",
+                "action_id": "submit_boilout"
+            }
+        ]
+    }
+]

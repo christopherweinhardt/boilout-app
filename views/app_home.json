@@ -1,0 +1,49 @@
+{
+    "type": "home",
+    "blocks": [
+        {
+            "type": "header",
+            "text": {
+                "type": "plain_text",
+                "text": "Actions"
+            }
+        },
+        {
+            "type": "actions",
+            "block_id": "action_buttons",
+            "elements": [
+                {
+                    "type": "button",
+                    "action_id": "submit_boilout",
+                    "text": {
+                        "type": "plain_text",
+                        "text": "Submit Boil Out",
+                        "emoji": true
+                    },
+                    "style": "primary",
+                    "value": "submit_boilout"
+                },
+                {
+                    "type": "button",
+                    "action_id": "add_fryer",
+                    "text": {
+                        "type": "plain_text",
+                        "text": "Add Fryer",
+                        "emoji": true
+                    },
+                    "value": "add_fryer"
+                },
+                {
+                    "type": "button",
+                    "action_id": "edit_fryer",
+                    "text": {
+                        "type": "plain_text",
+                        "text": "Edit Fryer",
+                        "emoji": true
+                    },
+                    "value": "edit_fryer"
+                }
+            ]
+        }
+    ]
+}

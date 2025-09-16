@@ -1,0 +1,240 @@
+import { createRequire } from 'module';
+const require = createRequire(import.meta.url);
+
+const fs = require('fs/promises');
+
+const MachineType = {
+    OPEN: 0,
+    PRESSURE: 1,
+    POTATO: 2
+}
+
+const MachineConfig = {
+    name: "",
+    type: MachineType.OPEN,
+    last_boilout: new Date(),
+    in_use: true
+}
+
+const GeneralConfig = {
+    machines: [],
+    time_periods: {
+        0: 36,
+        1: 30,
+        2: 15
+    }
+}
+
+/**
+ * Get `MachineType` from index
+ * @param {number} index
+ */
+function getMachineType(index) {
+    switch (index) {
+        case 0:
+            return MachineType.OPEN;
+        case 1:
+            return MachineType.PRESSURE;
+        case 2:
+            return MachineType.POTATO;
+        default:
+            return null;
+    }
+}
+function getMachineTypeString(type) {
+    switch (type) {
+        case MachineType.OPEN:
+            return "Open";
+        case MachineType.PRESSURE:
+            return "Pressure";
+        case MachineType.POTATO:
+            return "Potato";
+        default:
+            return "";
+    }
+}
+
+
+// Robust helper — accepts Date | string | number and supports negative days
+function addBusinessDays(dateLike, days) {
+    const date = new Date(dateLike);           // handles Date, string, number
+    if (isNaN(date)) throw new TypeError('Invalid date input');
+
+    const result = new Date(date.valueOf());
+    const step = days >= 0 ? 1 : -1;
+    let remaining = Math.abs(days);
+
+    while (remaining > 0) {
+        result.setDate(result.getDate() + step);
+        // skip Sundays (0)
+        if (result.getDay() !== 0) {
+            remaining--;
+        }
+    }
+    return result;
+}
+
+function isDateInThisWeek(dateToCheck, today) {
+  const currentDay = today.getDay(); // 0 for Sunday, 1 for Monday, ..., 6 for Saturday
+
+  // Calculate the start of the current week (Sunday)
+  const firstDayOfWeek = new Date(today);
+  firstDayOfWeek.setDate(today.getDate() - currentDay);
+  firstDayOfWeek.setHours(0, 0, 0, 0); // Set to the beginning of the day
+
+  // Calculate the end of the current week (Saturday)
+  const lastDayOfWeek = new Date(firstDayOfWeek);
+  lastDayOfWeek.setDate(firstDayOfWeek.getDate() + 6);
+  lastDayOfWeek.setHours(23, 59, 59, 999); // Set to the end of the day
+
+  // Ensure the dateToCheck is also normalized to avoid time discrepancies
+  const normalizedDateToCheck = new Date(dateToCheck);
+  normalizedDateToCheck.setHours(0, 0, 0, 0);
+
+  return normalizedDateToCheck >= firstDayOfWeek && normalizedDateToCheck <= lastDayOfWeek;
+}
+
+/**
+ *  Config Handling
+ */
+
+let config = { ...GeneralConfig };
+
+var retry_count = 0;
+async function load() {
+    Date.prototype.addDays = function (days) {
+        var date = new Date(this.valueOf());
+        date.setDate(date.getDate() + days);
+        return date;
+    }
+    Date.prototype.addBusinessDays = function (days) {
+        const result = new Date(this.valueOf());
+        let added = 0;
+
+        while (added < days) {
+            result.setDate(result.getDate() + 1);
+
+            // getDay() → 0=Sunday, 6=Saturday
+            if (result.getDay() !== 0) {
+                added++;
+            }
+        }
+        return result;
+    };
+    retry_count = 0;
+    try {
+        let data = JSON.parse(await fs.readFile("./config.json", 'utf-8'));
+        if (data.machines == undefined || data.time_periods == undefined)
+            throw new Error("Malformed config");
+        config.machines = data.machines;
+        config.time_periods = data.time_periods;
+    } catch (e) {
+        console.log(e);
+        if (retry_count >= 3)
+            return;
+        await fs.writeFile('./config.json', JSON.stringify(GeneralConfig, null, 2));
+        load();
+        retry_count++;
+    }
+}
+
+async function save() {
+    retry_count = 0;
+    try {
+        await fs.writeFile('./config.json', JSON.stringify(config, null, 2));
+        return true;
+    } catch (e) {
+        console.log(e);
+        if (retry_count >= 3)
+            return false;
+        save();
+        retry_count++;
+    }
+}
+
+/**
+ * Add fryer to machines list
+ * @param {string} fryer_name 
+ * @param {MachineType} fryer_type 
+ * @param {Date} boilout_date 
+ */
+async function add_fryer(fryer_name, fryer_type, boilout_date) {
+    let fryer = { ...MachineConfig }
+    fryer.name = fryer_name;
+    fryer.type = fryer_type;
+    fryer.last_boilout = boilout_date;
+    fryer.in_use = true;
+    config.machines.push(fryer);
+
+    return await save();
+}
+
+/**
+ * Submit a boilout and update the config
+ * @param {string} fryer_name 
+ * @param {Date} date 
+ * @param {boolean} flip_cookmode 
+ * @param {boolean} not_inuse 
+ * @returns 
+ */
+async function boilout(fryer_name, date, flip_cookmode, not_inuse) {
+    let machine = config.machines.find(m => m.name == fryer_name);
+    if (!machine)
+        return false;
+
+    if (flip_cookmode) {
+        machine.type = (machine.type == MachineType.OPEN) ? MachineType.PRESSURE : MachineType.OPEN;
+    }
+    machine.in_use = !not_inuse;
+
+    machine.last_boilout = date;
+
+    return await save();
+}
+
+
+/**
+ * 
+ * @param {MachineConfig} machine 
+ */
+function getNextBoilout(machine) {
+    const last_boilout = machine.last_boilout;
+    const next_boilout = addBusinessDays(last_boilout, config.time_periods[machine.type]);
+    return next_boilout;
+}
+
+/**
+ * 
+ * @returns {MachineConfig[]} machines
+ */
+async function getWeekSchedule(today = new Date()) {
+    let week_boilouts = [];
+    for (var i = 0; i < config.machines.length; i++) {
+        const next_boilout = getNextBoilout(config.machines[i]);
+        if(isDateInThisWeek(next_boilout, today))
+            week_boilouts.push(config.machines[i]);
+    }
+    return week_boilouts;
+}
+
+/**
+ * 
+ * @returns {MachineConfig[]} machines
+ */
+async function getMonthSchedule() {
+    // loop through machines
+    let month_boilouts = [];
+    for (var i = 0; i < config.machines.length; i++) {
+        const next_boilout = getNextBoilout(config.machines[i]);
+        const now = new Date();
+        if(next_boilout.getMonth() == now.getMonth())
+            month_boilouts.push(config.machines[i]);
+    }
+    return month_boilouts;
+}
+
+async function getConfig() {
+    return config;
+}
+
+export { load, add_fryer, boilout, getNextBoilout, getMachineType, getMonthSchedule, getWeekSchedule, getConfig, getMachineTypeString }
