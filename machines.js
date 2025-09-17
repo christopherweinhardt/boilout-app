@@ -75,23 +75,25 @@ function addBusinessDays(dateLike, days) {
 }
 
 function isDateInThisWeek(dateToCheck, today) {
-  const currentDay = today.getDay(); // 0 for Sunday, 1 for Monday, ..., 6 for Saturday
+    if (!dateToCheck)
+        return false;
+    const currentDay = today.getDay(); // 0 for Sunday, 1 for Monday, ..., 6 for Saturday
 
-  // Calculate the start of the current week (Sunday)
-  const firstDayOfWeek = new Date(today);
-  firstDayOfWeek.setDate(today.getDate() - currentDay);
-  firstDayOfWeek.setHours(0, 0, 0, 0); // Set to the beginning of the day
+    // Calculate the start of the current week (Sunday)
+    const firstDayOfWeek = new Date(today);
+    firstDayOfWeek.setDate(today.getDate() - currentDay);
+    firstDayOfWeek.setHours(0, 0, 0, 0); // Set to the beginning of the day
 
-  // Calculate the end of the current week (Saturday)
-  const lastDayOfWeek = new Date(firstDayOfWeek);
-  lastDayOfWeek.setDate(firstDayOfWeek.getDate() + 6);
-  lastDayOfWeek.setHours(23, 59, 59, 999); // Set to the end of the day
+    // Calculate the end of the current week (Saturday)
+    const lastDayOfWeek = new Date(firstDayOfWeek);
+    lastDayOfWeek.setDate(firstDayOfWeek.getDate() + 6);
+    lastDayOfWeek.setHours(23, 59, 59, 999); // Set to the end of the day
 
-  // Ensure the dateToCheck is also normalized to avoid time discrepancies
-  const normalizedDateToCheck = new Date(dateToCheck);
-  normalizedDateToCheck.setHours(0, 0, 0, 0);
+    // Ensure the dateToCheck is also normalized to avoid time discrepancies
+    const normalizedDateToCheck = new Date(dateToCheck);
+    normalizedDateToCheck.setHours(0, 0, 0, 0);
 
-  return normalizedDateToCheck >= firstDayOfWeek && normalizedDateToCheck <= lastDayOfWeek;
+    return normalizedDateToCheck >= firstDayOfWeek && normalizedDateToCheck <= lastDayOfWeek;
 }
 
 /**
@@ -205,32 +207,75 @@ function getNextBoilout(machine) {
 
 /**
  * 
- * @returns {MachineConfig[]} machines
+ * @param {MachineConfig} machine 
+ */
+function getNextFilterChanges(machine) {
+    const last_boilout = machine.last_boilout;
+    switch (machine.type) {
+        case MachineType.OPEN:
+            return [addBusinessDays(last_boilout, 15)]
+        case MachineType.PRESSURE:
+            return [addBusinessDays(last_boilout, 10), addBusinessDays(last_boilout, 20)]
+        default:
+            return [];
+    }
+}
+
+
+const Schedule = {
+    boilouts: [],
+    filter_changes: []
+};
+
+/**
+ * 
+ * @returns {Schedule} machines
  */
 async function getWeekSchedule(today = new Date()) {
     let week_boilouts = [];
+    let week_filters = [];
     for (var i = 0; i < config.machines.length; i++) {
         const next_boilout = getNextBoilout(config.machines[i]);
-        if(isDateInThisWeek(next_boilout, today))
-            week_boilouts.push(config.machines[i]);
+        const next_filters = getNextFilterChanges(config.machines[i]);
+        if (isDateInThisWeek(next_boilout, today))
+            week_boilouts.push({ machine: config.machines[i], date: next_boilout });
+
+        let filters = next_filters.filter(m => isDateInThisWeek(m, today));
+        if (filters.length > 0) {
+            week_filters.push({ machine: config.machines[i], date: filters[0] });
+        }
     }
-    return week_boilouts;
+    return {
+        filter_changes: week_filters,
+        boilouts: week_boilouts
+    };
 }
 
 /**
  * 
- * @returns {MachineConfig[]} machines
+ * @returns {Schedule} machines
  */
 async function getMonthSchedule() {
     // loop through machines
     let month_boilouts = [];
+    let month_filters = [];
     for (var i = 0; i < config.machines.length; i++) {
         const next_boilout = getNextBoilout(config.machines[i]);
+        const next_filters = getNextFilterChanges(config.machines[i]);
         const now = new Date();
-        if(next_boilout.getMonth() == now.getMonth())
-            month_boilouts.push(config.machines[i]);
+        if (next_boilout.getMonth() == now.getMonth())
+            month_boilouts.push({ machine: config.machines[i], date: next_boilout });
+        let filters = next_filters.filter(m => m.getMonth() == now.getMonth());
+        if (filters.length > 0) {
+            filters.forEach(m => {
+                month_filters.push({ machine: config.machines[i], date: m });
+            })
+        }
     }
-    return month_boilouts;
+    return {
+        boilouts: month_boilouts,
+        filter_changes: month_filters
+    };
 }
 
 async function getConfig() {

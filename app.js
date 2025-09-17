@@ -210,16 +210,27 @@ app.command('/week', async ({ ack, payload }) => {
   }
 
   let data = [
-    [`Monday`, 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'],
-    ['---', '---', '---', '---', '---', '---']
+    [``, `Monday`, 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'],
+    ['Boil Outs', '---', '---', '---', '---', '---', '---'],
+    ['Filter Changes', '---', '---', '---', '---', '---', '---']
   ]
-  for (var i = 0; i < week_boilouts.length; i++) {
-    let next_boilout = getNextBoilout(week_boilouts[i]);
-    let day_of_week = next_boilout.getDay() - 1;
+  for (var i = 0; i < week_boilouts.boilouts.length; i++) {
+    let boilout = week_boilouts.boilouts[i];
+    let day_of_week = boilout.date.getDay();
     if (day_of_week < 0)
       continue;
-    data[1][day_of_week] = week_boilouts[i].name;
+    data[1][day_of_week] = data[1][day_of_week].replace('---','');
+    data[1][day_of_week] += `${boilout.machine.name} `;
   }
+  for (var i = 0; i < week_boilouts.filter_changes.length; i++) {
+    let filter_change = week_boilouts.filter_changes[i];
+    let day_of_week = filter_change.date.getDay();
+    if (day_of_week < 0)
+      continue;
+    data[2][day_of_week] = data[2][day_of_week].replace('---','');
+    data[2][day_of_week] += `${filter_change.machine.name} `;
+  }
+
   const output_table = table(data);
   schedule[1].text.text = `\`\`\`${output_table}\`\`\``;
 
@@ -248,19 +259,31 @@ app.command('/month', async ({ ack, payload }) => {
 
   let date = new Date();
   let month_schedule = await getMonthSchedule();
-  month_schedule.sort((a, b) => new Date(a.last_boilout) - new Date(b.last_boilout));
+  month_schedule.boilouts.sort((a, b) => new Date(a.date) - new Date(b.date));
+  month_schedule.filter_changes.sort((a, b) => new Date(a.date) - new Date(b.date));
 
   schedule = JSON.parse(JSON.stringify(MONTH_SCHEDULE));
-
-  if (month_schedule.length == 0)
+  if (month_schedule.boilouts.length == 0 && month_schedule.filter_changes.length == 0)
     return;
 
   schedule[0].text.text = `*Month of ${date.toLocaleString('default', { month: 'long' })}*`;
-  for (var i = 0; i < month_schedule.length; i++) {
-    let m = month_schedule[i];
-    let next_boilout = getNextBoilout(m);
+  let entry1 = JSON.parse(JSON.stringify(boilout_schedule_entry))
+  entry1.text.text = `Boil Outs:`
+  schedule.push(entry1);
+  for (var i = 0; i < month_schedule.boilouts.length; i++) {
+    let boilout = month_schedule.boilouts[i];
+    console.log(boilout)
     let entry = JSON.parse(JSON.stringify(boilout_schedule_entry))
-    entry.text.text = `• ${m.name} - ${next_boilout.toLocaleString("en-US", { month: "long", day: "numeric" })}`
+    entry.text.text = `• ${boilout.machine.name} - ${boilout.date.toLocaleString("en-US", { month: "long", day: "numeric" })}`
+    schedule.push(entry);
+  }
+  let entry2 = JSON.parse(JSON.stringify(boilout_schedule_entry))
+  entry2.text.text = `Filter Changes:`
+  schedule.push(entry2);
+  for (var i = 0; i < month_schedule.filter_changes.length; i++) {
+    let filter_change = month_schedule.filter_changes[i];
+    let entry = JSON.parse(JSON.stringify(boilout_schedule_entry))
+    entry.text.text = `• ${filter_change.machine.name} - ${filter_change.date.toLocaleString("en-US", { month: "long", day: "numeric" })}`
     schedule.push(entry);
   }
 
@@ -292,15 +315,25 @@ async function postWeekly() {
   }
 
   let data = [
-    [`Monday`, 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'],
-    ['---', '---', '---', '---', '---', '---']
+    [``, `Monday`, 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'],
+    ['Boil Outs', '---', '---', '---', '---', '---', '---'],
+    ['Filter Changes', '---', '---', '---', '---', '---', '---']
   ]
-  for (var i = 0; i < week_boilouts.length; i++) {
-    let next_boilout = getNextBoilout(week_boilouts[i]);
-    let day_of_week = next_boilout.getDay() - 1;
+  for (var i = 0; i < week_boilouts.boilouts.length; i++) {
+    let boilout = week_boilouts.boilouts[i];
+    let day_of_week = boilout.date.getDay();
     if (day_of_week < 0)
       continue;
-    data[1][day_of_week] = week_boilouts[i].name;
+    data[1][day_of_week] = data[1][day_of_week].replace('---','');
+    data[1][day_of_week] += `${boilout.machine.name} `;
+  }
+  for (var i = 0; i < week_boilouts.filter_changes.length; i++) {
+    let filter_change = week_boilouts.filter_changes[i];
+    let day_of_week = filter_change.date.getDay();
+    if (day_of_week < 0)
+      continue;
+    data[2][day_of_week] = data[2][day_of_week].replace('---','');
+    data[2][day_of_week] += `${filter_change.machine.name} `;
   }
   const output_table = table(data);
   schedule[1].text.text = `\`\`\`${output_table}\`\`\``;
