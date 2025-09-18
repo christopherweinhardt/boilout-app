@@ -25,6 +25,7 @@
   "homepage": "https://github.com/slack-samples/bolt-js-blank-template#readme",
   "dependencies": {
     "@slack/bolt": "^4.4.0",
+    "canvas": "^3.2.0",
     "node-cron": "^4.2.1",
     "sqlite3": "^5.1.7",
     "table": "^6.9.0"

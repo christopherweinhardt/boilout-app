@@ -10,6 +10,7 @@ const MONTH_SCHEDULE = require('./views/month_schedule.json');
 const { table } = require('table');
 const cron = require('node-cron');
 const { add_fryer, load, boilout, getNextBoilout, getMachineType, getConfig, getMachineTypeString, getWeekSchedule, getMonthSchedule } = require('./machines');
+const { render } = require('./table');
 
 // Initializes your app with your Slack app and bot token
 const app = new App({
@@ -183,7 +184,7 @@ app.action('edit_fryer', async ({ ack, body, client, logger }) => {
   await ack();
 });
 
-app.command('/week', async ({ ack, payload }) => {
+app.command('/week', async ({ ack, client, payload }) => {
 
   await ack();
   console.log('Processing /week...')
@@ -219,7 +220,7 @@ app.command('/week', async ({ ack, payload }) => {
     let day_of_week = boilout.date.getDay();
     if (day_of_week < 0)
       continue;
-    data[1][day_of_week] = data[1][day_of_week].replace('---','');
+    data[1][day_of_week] = data[1][day_of_week].replace('---', '');
     data[1][day_of_week] += `${boilout.machine.name} `;
   }
   for (var i = 0; i < week_boilouts.filter_changes.length; i++) {
@@ -227,12 +228,29 @@ app.command('/week', async ({ ack, payload }) => {
     let day_of_week = filter_change.date.getDay();
     if (day_of_week < 0)
       continue;
-    data[2][day_of_week] = data[2][day_of_week].replace('---','');
+    data[2][day_of_week] = data[2][day_of_week].replace('---', '');
     data[2][day_of_week] += `${filter_change.machine.name} `;
   }
-
+  const buffer = await render([data[1], data[2]], data[0]);
   const output_table = table(data);
   schedule[1].text.text = `\`\`\`${output_table}\`\`\``;
+  const result = await client.files.uploadV2({
+    channel_id: "C09FJ60MC3W",
+    file: buffer,
+    filename: "table.png",
+    title: "Boil Out Schedule",
+  });
+
+  // result.files is an array when using uploadV2
+  const file = result.files[0].files[0];
+  return;
+  // Direct download URLs (require token auth):
+  console.log("🔗 url_private:", file.url_private);
+  console.log("🔗 url_private_download:", file.url_private_download);
+
+  // Public permalink (viewable in Slack UI):
+  console.log("🔗 permalink:", file.permalink);
+
 
   await app.client.chat.postEphemeral({
     channel: payload.channel_id,
@@ -305,11 +323,14 @@ async function postWeekly() {
     schedule = JSON.parse(JSON.stringify(EMPTY_WEEKLY_SCHEDULE));
     let header = `*Week of ${getWeekStartText()}*`;
     schedule[0].text.text = header;
-    await app.client.chat.postEphemeral({
-      channel: payload.channel_id,
-      user: userId,
-      text: `This weeks boilout schedule:`,
-      blocks: schedule
+    const buffer = await render([data[1], data[2]], data[0]);
+    const output_table = table(data);
+    schedule[1].text.text = `\`\`\`${output_table}\`\`\``;
+    const result = await client.files.uploadV2({
+      channel_id: CHANNEL_ID,
+      file: buffer,
+      filename:`${getWeekStartText()}.png"`,
+      title: "Boil Out Schedule",
     });
     return;
   }
@@ -324,7 +345,7 @@ async function postWeekly() {
     let day_of_week = boilout.date.getDay();
     if (day_of_week < 0)
       continue;
-    data[1][day_of_week] = data[1][day_of_week].replace('---','');
+    data[1][day_of_week] = data[1][day_of_week].replace('---', '');
     data[1][day_of_week] += `${boilout.machine.name} `;
   }
   for (var i = 0; i < week_boilouts.filter_changes.length; i++) {
@@ -332,9 +353,10 @@ async function postWeekly() {
     let day_of_week = filter_change.date.getDay();
     if (day_of_week < 0)
       continue;
-    data[2][day_of_week] = data[2][day_of_week].replace('---','');
+    data[2][day_of_week] = data[2][day_of_week].replace('---', '');
     data[2][day_of_week] += `${filter_change.machine.name} `;
   }
+  render([data[1], data[2]], data[0]);
   const output_table = table(data);
   schedule[1].text.text = `\`\`\`${output_table}\`\`\``;
 
