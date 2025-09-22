@@ -197,7 +197,7 @@ app.command('/week', async ({ ack, client, payload }) => {
 
   schedule = JSON.parse(JSON.stringify(WEEKLY_SCHEDULE));
 
-  if (week_boilouts.length == 0) {
+  if (week_boilouts.boilouts.length == 0 && week_boilouts.filter_changes.length == 0) {
     schedule = JSON.parse(JSON.stringify(EMPTY_WEEKLY_SCHEDULE));
     let header = `*Week of ${getWeekStartText()}*`;
     schedule[0].text.text = header;
@@ -232,9 +232,13 @@ app.command('/week', async ({ ack, client, payload }) => {
     data[2][day_of_week] = data[2][day_of_week].replace('---', '');
     data[2][day_of_week] += `${filter_change.machine.name} `;
   }
+
+  const dm = await app.client.conversations.open({
+    users: userId // Replace with the user’s Slack ID
+  });
   const buffer = await render([data[1], data[2]], data[0]);
   const result = await client.files.uploadV2({
-    channel_id: userId,
+    channel_id: dm.channel.id,
     file: buffer,
     filename: "table.png",
     title: "Boil Out Schedule",
@@ -301,14 +305,12 @@ async function postWeekly() {
 
   schedule = JSON.parse(JSON.stringify(WEEKLY_SCHEDULE));
 
-  if (week_boilouts.length == 0) {
+  if (week_boilouts.boilouts.length == 0 && week_boilouts.filter_changes.length == 0) {
     schedule = JSON.parse(JSON.stringify(EMPTY_WEEKLY_SCHEDULE));
     let header = `*Week of ${getWeekStartText()}*`;
     schedule[0].text.text = header;
-    schedule[1].text.text = "No boilouts scheduled this week.";
     await app.client.chat.postMessage({
       channel: payload.channel_id,
-      user: userId,
       text: `This weeks boilout schedule:`,
       blocks: schedule
     });
@@ -341,10 +343,10 @@ async function postWeekly() {
   await app.client.chat.postMessage({
     channel: CHANNEL_ID,
     text: `This week's boilout schedule now posted!`,
-    blocks: schedule
+    blocks: [schedule[0]]
   });
   const result = await client.files.uploadV2({
-    channel_id: userId,
+    channel_id: CHANNEL_ID,
     file: buffer,
     filename: "table.png",
     title: "Boil Out Schedule",
@@ -373,7 +375,7 @@ app.event('app_home_opened', async ({ event, client, logger }) => {
   // Start your app
   await app.start();
 
-  cron.schedule('30 9 * * 1', () => { postWeekly() }, { timezone: "America/New_York" });
+  cron.schedule('0 9 * * 1', () => { postWeekly() }, { timezone: "America/New_York" });
 
   app.logger.info('Boilout Bot is running!');
 })();
