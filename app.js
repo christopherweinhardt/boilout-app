@@ -125,6 +125,10 @@ app.view('boilout_submit', async ({ ack, body, view, client, logger }) => {
   if (!results) {
     msg = 'There was an error with your submission. Please let Chris know.';
   } else {
+    await client.chat.postMessage({
+      channel: "D09BQ43A9K2",
+      text: `<@${user}> just submitted the boilout for ${fryer_name}`
+    })
     return;
   }
 
@@ -196,6 +200,8 @@ app.command('/week', async ({ ack, client, payload }) => {
   let week_boilouts = await getWeekSchedule(date);
 
   schedule = JSON.parse(JSON.stringify(WEEKLY_SCHEDULE));
+  let header = `*Week of ${getWeekStartText()}*`;
+  schedule[0].text.text = header;
 
   if (week_boilouts.boilouts.length == 0 && week_boilouts.filter_changes.length == 0) {
     schedule = JSON.parse(JSON.stringify(EMPTY_WEEKLY_SCHEDULE));
@@ -236,6 +242,7 @@ app.command('/week', async ({ ack, client, payload }) => {
   const dm = await app.client.conversations.open({
     users: userId // Replace with the user’s Slack ID
   });
+  console.log(dm.channel.id);
   const buffer = await render([data[1], data[2]], data[0]);
   const result = await client.files.uploadV2({
     channel_id: dm.channel.id,
@@ -304,6 +311,8 @@ async function postWeekly() {
   let week_boilouts = await getWeekSchedule(date);
 
   schedule = JSON.parse(JSON.stringify(WEEKLY_SCHEDULE));
+  let header = `*Week of ${getWeekStartText()}*`;
+  schedule[0].text.text = header;
 
   if (week_boilouts.boilouts.length == 0 && week_boilouts.filter_changes.length == 0) {
     schedule = JSON.parse(JSON.stringify(EMPTY_WEEKLY_SCHEDULE));
