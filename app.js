@@ -306,7 +306,7 @@ app.command('/month', async ({ ack, payload }) => {
   });
 });
 
-async function postWeekly() {
+async function postWeekly(channel_id) {
   let date = new Date();
   let week_boilouts = await getWeekSchedule(date);
 
@@ -319,7 +319,7 @@ async function postWeekly() {
     let header = `*Week of ${getWeekStartText()}*`;
     schedule[0].text.text = header;
     await app.client.chat.postMessage({
-      channel: payload.channel_id,
+      channel: channel_id,
       text: `This weeks boilout schedule:`,
       blocks: schedule
     });
@@ -350,12 +350,12 @@ async function postWeekly() {
   const buffer = await render([data[1], data[2]], data[0]);
 
   await app.client.chat.postMessage({
-    channel: CHANNEL_ID,
+    channel: channel_id,
     text: `This week's boilout schedule now posted!`,
     blocks: [schedule[0]]
   });
-  const result = await client.files.uploadV2({
-    channel_id: CHANNEL_ID,
+  const result = await app.client.files.uploadV2({
+    channel_id: channel_id,
     file: buffer,
     filename: "table.png",
     title: "Boil Out Schedule",
@@ -384,7 +384,7 @@ app.event('app_home_opened', async ({ event, client, logger }) => {
   // Start your app
   await app.start();
 
-  cron.schedule('0 9 * * 1', () => { postWeekly() }, { timezone: "America/New_York" });
+  cron.schedule('0 9 * * 1', () => { postWeekly(CHANNEL_ID) }, { timezone: "America/New_York" });
 
   app.logger.info('Boilout Bot is running!');
 })();
