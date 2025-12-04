@@ -10,7 +10,7 @@ const MONTH_SCHEDULE = require('./views/month_schedule.json');
 const { table } = require('table');
 const cron = require('node-cron');
 const { add_fryer, load, boilout, getNextBoilout, getMachineType, getConfig, getMachineTypeString, getWeekSchedule, getMonthSchedule } = require('./machines');
-const { render } = require('./table');
+const { render, createSlackTableFromJson } = require('./table');
 
 // Initializes your app with your Slack app and bot token
 const app = new App({
@@ -22,8 +22,8 @@ const app = new App({
 function getWeekStartText(dateLike = new Date()) {
   const date = new Date(dateLike);
 
-  // getDay(): 0=Sunday, 1=Monday, ..., 6=Saturday
-  const day = date.getDay();
+  // getUTCDay(): 0=Sunday, 1=Monday, ..., 6=Saturday
+  const day = date.getUTCDay();
   const diff = (day === 0 ? -6 : 1 - day);
   // if Sunday, back up 6 days; otherwise go back to Monday
 
@@ -47,7 +47,7 @@ function formatDateWithOrdinal(d) {
 }
 
 
-const CHANNEL_ID = "C08DX2NM3E3";
+const CHANNEL_ID = "C09FJ60MC3W";//C08DX2NM3E3";
 
 app.message(async ({ message, say, logger, client }) => {
   try {
@@ -96,8 +96,10 @@ app.action('submit_boilout', async ({ ack, body, client, logger }) => {
     machine_json.value = machine.name;
     modal.blocks[0].element.options.push(machine_json);
   }
-  const currentDate = new Date();
-  const formattedDate = currentDate.toISOString().slice(0, 10);
+  // Use the local timezone when computing the initial date for the date picker
+  const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
+  // 'en-CA' produces an ISO-like YYYY-MM-DD date string suitable for Slack's initial_date
+  const formattedDate = new Intl.DateTimeFormat('en-CA', { timeZone: timezone }).format(new Date());
   modal.blocks[1].element.initial_date = formattedDate;
 
   await client.views.open({
@@ -219,27 +221,38 @@ app.command('/week', async ({ ack, client, payload }) => {
 
   let data = [
     [``, `Monday`, 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'],
-    ['Boil Outs', '---', '---', '---', '---', '---', '---'],
-    ['Filter Changes', '---', '---', '---', '---', '---', '---']
+    ['Boil Outs', ' ', ' ', ' ', ' ', ' ', ' '],
+    ['Filter Changes', ' ', ' ', ' ', ' ', ' ', ' ']
   ]
   for (var i = 0; i < week_boilouts.boilouts.length; i++) {
     let boilout = week_boilouts.boilouts[i];
-    let day_of_week = boilout.date.getDay();
+    let day_of_week = boilout.date.getUTCDay();
+    console.log("Boilout day: " + boilout.date)
     if (day_of_week < 0)
       continue;
-    data[1][day_of_week] = data[1][day_of_week].replace('---', '');
-    data[1][day_of_week] += `${boilout.machine.name} `;
+    data[1][day_of_week] = data[1][day_of_week].replace(' ', '');
+    data[1][day_of_week] += `• ${boilout.machine.name}\n`;
   }
   for (var i = 0; i < week_boilouts.filter_changes.length; i++) {
     let filter_change = week_boilouts.filter_changes[i];
-    let day_of_week = filter_change.date.getDay();
+    let day_of_week = filter_change.date.getUTCDay();
     if (day_of_week < 0)
       continue;
-    data[2][day_of_week] = data[2][day_of_week].replace('---', '');
-    data[2][day_of_week] += `${filter_change.machine.name} `;
+    data[2][day_of_week] = data[2][day_of_week].replace(' ', '');
+    data[2][day_of_week] += `• ${filter_change.machine.name}\n`;
   }
 
-  const dm = await app.client.conversations.open({
+  // Generate the Slack Block Kit JSON
+  const slackTableJson = createSlackTableFromJson(data);
+  await app.client.chat.postEphemeral({
+    channel: payload.channel_id,
+    user: userId,
+    text: `This week's boilout schedule:`,
+    blocks: slackTableJson.blocks
+  });
+  // You can now console.log this or use it in your Slack integration
+  //console.log(JSON.stringify(slackTableJson, null, 2));
+  /*const dm = await app.client.conversations.open({
     users: userId // Replace with the user’s Slack ID
   });
   console.log(dm.channel.id);
@@ -249,7 +262,7 @@ app.command('/week', async ({ ack, client, payload }) => {
     file: buffer,
     filename: "table.png",
     title: "Boil Out Schedule",
-  });
+  });*/
   return;
 });
 
@@ -328,37 +341,36 @@ async function postWeekly(channel_id) {
 
   let data = [
     [``, `Monday`, 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'],
-    ['Boil Outs', '---', '---', '---', '---', '---', '---'],
-    ['Filter Changes', '---', '---', '---', '---', '---', '---']
+    ['Boil Outs', ' ', ' ', ' ', ' ', ' ', ' '],
+    ['Filter Changes', ' ', ' ', ' ', ' ', ' ', ' ']
   ]
   for (var i = 0; i < week_boilouts.boilouts.length; i++) {
     let boilout = week_boilouts.boilouts[i];
-    let day_of_week = boilout.date.getDay();
+    let day_of_week = boilout.date.getUTCDay();
+    console.log("Boilout day: " + boilout.date)
     if (day_of_week < 0)
       continue;
-    data[1][day_of_week] = data[1][day_of_week].replace('---', '');
-    data[1][day_of_week] += `${boilout.machine.name} `;
+    data[1][day_of_week] = data[1][day_of_week].replace(' ', '');
+    data[1][day_of_week] += `• ${boilout.machine.name}\n`;
   }
   for (var i = 0; i < week_boilouts.filter_changes.length; i++) {
     let filter_change = week_boilouts.filter_changes[i];
-    let day_of_week = filter_change.date.getDay();
+    let day_of_week = filter_change.date.getUTCDay();
     if (day_of_week < 0)
       continue;
-    data[2][day_of_week] = data[2][day_of_week].replace('---', '');
-    data[2][day_of_week] += `${filter_change.machine.name} `;
+    data[2][day_of_week] = data[2][day_of_week].replace(' ', '');
+    data[2][day_of_week] += `• ${filter_change.machine.name}\n`;
   }
-  const buffer = await render([data[1], data[2]], data[0]);
 
-  await app.client.chat.postMessage({
-    channel: channel_id,
-    text: `This week's boilout schedule now posted!`,
-    blocks: [schedule[0]]
-  });
-  const result = await app.client.files.uploadV2({
-    channel_id: channel_id,
-    file: buffer,
-    filename: "table.png",
-    title: "Boil Out Schedule",
+  console.log(data);
+
+  // Generate the Slack Block Kit JSON
+  const slackTableJson = createSlackTableFromJson(data);
+  await app.client.chat.postEphemeral({
+    channel: payload.channel_id,
+    user: userId,
+    text: `This week's boilout schedule:`,
+    blocks: slackTableJson.blocks
   });
 }
 

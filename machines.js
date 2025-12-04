@@ -13,6 +13,8 @@ const MachineConfig = {
     name: "",
     type: MachineType.OPEN,
     last_boilout: new Date(),
+    next_boilout: new Date(),
+    next_filter_changes: [],
     in_use: true
 }
 
@@ -67,9 +69,14 @@ function addBusinessDays(dateLike, days) {
     while (remaining > 0) {
         result.setDate(result.getDate() + step);
         // skip Sundays (0)
-        if (result.getDay() !== 0) {
+        if (result.getUTCDay() !== 0) {
             remaining--;
         }
+    }
+
+    // if result is a sunday, add 1 day
+    if (result.getUTCDay() === 0) {
+        result.setDate(result.getDate() + 1);
     }
     return result;
 }
@@ -77,7 +84,7 @@ function addBusinessDays(dateLike, days) {
 function isDateInThisWeek(dateToCheck, today) {
     if (!dateToCheck)
         return false;
-    const currentDay = today.getDay(); // 0 for Sunday, 1 for Monday, ..., 6 for Saturday
+    const currentDay = today.getUTCDay(); // 0 for Sunday, 1 for Monday, ..., 6 for Saturday
 
     // Calculate the start of the current week (Sunday)
     const firstDayOfWeek = new Date(today);
@@ -116,8 +123,8 @@ async function load() {
         while (added < days) {
             result.setDate(result.getDate() + 1);
 
-            // getDay() → 0=Sunday, 6=Saturday
-            if (result.getDay() !== 0) {
+            // getUTCDay() → 0=Sunday, 6=Saturday
+            if (result.getUTCDay() !== 0) {
                 added++;
             }
         }
@@ -129,6 +136,12 @@ async function load() {
         if (data.machines == undefined || data.time_periods == undefined)
             throw new Error("Malformed config");
         config.machines = data.machines;
+        for (var i = 0; i < config.machines.length; i++) {
+            if(config.machines[i].next_boilout == undefined)
+                config.machines[i].next_boilout = getNextBoilout(config.machines[i]);
+            if(config.machines[i].next_filter_changes == undefined)
+                config.machines[i].next_filter_changes = getNextFilterChanges(config.machines[i]);
+        }
         config.time_periods = data.time_periods;
     } catch (e) {
         console.log(e);
@@ -190,6 +203,8 @@ async function boilout(fryer_name, date, flip_cookmode, not_inuse) {
     machine.in_use = !not_inuse;
 
     machine.last_boilout = date;
+    machine.next_boilout = getNextBoilout(machine);
+    machine.next_filter_changes = getNextFilterChanges(machine);
 
     return await save();
 }
@@ -215,7 +230,7 @@ function getNextFilterChanges(machine) {
         case MachineType.OPEN:
             return [addBusinessDays(last_boilout, 15)]
         case MachineType.PRESSURE:
-            return [addBusinessDays(last_boilout, 10), addBusinessDays(last_boilout, 20)]
+            return [addBusinessDays(last_boilout, 10)]//, addBusinessDays(last_boilout, 20)]
         default:
             return [];
     }
@@ -235,16 +250,17 @@ async function getWeekSchedule(today = new Date()) {
     let week_boilouts = [];
     let week_filters = [];
     for (var i = 0; i < config.machines.length; i++) {
-        const next_boilout = getNextBoilout(config.machines[i]);
-        const next_filters = getNextFilterChanges(config.machines[i]);
+        const next_boilout = config.machines[i].next_boilout;
+        const next_filters = config.machines[i].next_filter_changes;
         if (isDateInThisWeek(next_boilout, today))
-            week_boilouts.push({ machine: config.machines[i], date: next_boilout });
+            week_boilouts.push({ machine: config.machines[i], date: new Date(next_boilout) });
 
         let filters = next_filters.filter(m => isDateInThisWeek(m, today));
         if (filters.length > 0) {
-            week_filters.push({ machine: config.machines[i], date: filters[0] });
+            week_filters.push({ machine: config.machines[i], date: new Date(filters[0]) });
         }
     }
+
     return {
         filter_changes: week_filters,
         boilouts: week_boilouts
@@ -260,15 +276,14 @@ async function getMonthSchedule() {
     let month_boilouts = [];
     let month_filters = [];
     for (var i = 0; i < config.machines.length; i++) {
-        const next_boilout = getNextBoilout(config.machines[i]);
-        const next_filters = getNextFilterChanges(config.machines[i]);
+        const next_boilout = config.machines[i].next_boilout;
+        const next_filters = config.machines[i].next_filter_changes;
         const now = new Date();
-        if (next_boilout.getMonth() == now.getMonth())
-            month_boilouts.push({ machine: config.machines[i], date: next_boilout });
-        let filters = next_filters.filter(m => m.getMonth() == now.getMonth());
+        month_boilouts.push({ machine: config.machines[i], date: new Date(next_boilout) });
+        let filters = next_filters.filter(m => new Date(m).getMonth() == now.getMonth());
         if (filters.length > 0) {
             filters.forEach(m => {
-                month_filters.push({ machine: config.machines[i], date: m });
+                month_filters.push({ machine: config.machines[i], date: new Date(m) });
             })
         }
     }

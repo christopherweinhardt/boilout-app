@@ -99,4 +99,53 @@ async function render(rows, headers) {
   return buffer;
 }
 
-export { render }
+/**
+ * Generates a Slack Block Kit JSON object for a native table based on input data.
+ *
+ * @param {Array<Array<string>>} inputData - A 2D array where the first row contains headers
+ *                                           and subsequent rows contain data.
+ *                                           Example:
+ *                                           [
+ *                                             ['', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'],
+ *                                             ['Boil Outs', '---', '---', '---', '---', '---', '---'],
+ *                                             ['Filter Changes', '---', '---', '---', '---', '---', '---']
+ *                                           ]
+ * @returns {object} A Slack Block Kit JSON object representing a native table.
+ */
+function createSlackTableFromJson(inputData) {
+  const tableRows = inputData.map((rowData, rowIndex) => {
+    return rowData.map((cellContent, colIndex) => {
+      // Create a rich_text block for each cell
+      const richTextElement = {
+        type: "rich_text_section",
+        elements: [
+          {
+            type: "text",
+            text: cellContent == "" ? " " : cellContent,
+          },
+        ],
+      };
+
+      // Bold the header row
+      if (rowIndex === 0 && cellContent !== '') {
+        richTextElement.elements[0].style = { bold: true };
+      }
+
+      return {
+        type: "rich_text",
+        elements: [richTextElement],
+      };
+    });
+  });
+
+  return {
+    blocks: [
+      {
+        type: "table",
+        rows: tableRows,
+      },
+    ],
+  };
+}
+
+export { render, createSlackTableFromJson }
