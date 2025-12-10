@@ -137,10 +137,8 @@ async function load() {
             throw new Error("Malformed config");
         config.machines = data.machines;
         for (var i = 0; i < config.machines.length; i++) {
-            if(config.machines[i].next_boilout == undefined)
-                config.machines[i].next_boilout = getNextBoilout(config.machines[i]);
-            if(config.machines[i].next_filter_changes == undefined)
-                config.machines[i].next_filter_changes = getNextFilterChanges(config.machines[i]);
+            config.machines[i].next_boilout = getNextBoilout(config.machines[i]);
+            config.machines[i].next_filter_changes = getNextFilterChanges(config.machines[i]);
         }
         config.time_periods = data.time_periods;
     } catch (e) {
