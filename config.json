@@ -3,55 +3,83 @@
     {
       "name": "Piranha Plant",
       "type": 2,
-      "last_boilout": "2025-09-12T00:00:00.000Z",
-      "in_use": true
+      "last_boilout": "2025-12-03T00:00:00.000Z",
+      "in_use": true,
+      "next_boilout": "2025-12-15T00:00:00.000Z",
+      "next_filter_changes": []
     },
     {
       "name": "Bullet Bill",
       "type": 2,
       "last_boilout": "2025-07-17T00:00:00.000Z",
-      "in_use": false
+      "in_use": false,
+      "next_boilout": "2025-08-04T00:00:00.000Z",
+      "next_filter_changes": []
     },
     {
       "name": "Luiji",
       "type": 0,
-      "last_boilout": "2025-07-29T00:00:00.000Z",
-      "in_use": false
+      "last_boilout": "2025-10-07T00:00:00.000Z",
+      "in_use": true,
+      "next_boilout": "2025-11-18T00:00:00.000Z",
+      "next_filter_changes": [
+        "2025-10-24T00:00:00.000Z"
+      ]
     },
     {
       "name": "Yoshi",
-      "type": 0,
-      "last_boilout": "2025-09-04T00:00:00.000Z",
-      "in_use": true
+      "type": 1,
+      "last_boilout": "2025-11-21T00:00:00.000Z",
+      "in_use": true,
+      "next_boilout": "2025-12-26T00:00:00.000Z",
+      "next_filter_changes": [
+        "2025-12-03T00:00:00.000Z"
+      ]
     },
     {
       "name": "Waluiji",
       "type": 0,
-      "last_boilout": "2025-09-09T00:00:00.000Z",
-      "in_use": true
+      "last_boilout": "2025-11-04T00:00:00.000Z",
+      "in_use": true,
+      "next_boilout": "2025-12-16T00:00:00.000Z",
+      "next_filter_changes": [
+        "2025-11-21T00:00:00.000Z"
+      ]
     },
     {
       "name": "Toad",
       "type": 1,
-      "last_boilout": "2025-09-05T00:00:00.000Z",
-      "in_use": true
+      "last_boilout": "2025-11-14T00:00:00.000Z",
+      "in_use": true,
+      "next_boilout": "2025-12-19T00:00:00.000Z",
+      "next_filter_changes": [
+        "2025-11-26T00:00:00.000Z"
+      ]
     },
     {
       "name": "Mario",
       "type": 1,
-      "last_boilout": "2025-09-03T00:00:00.000Z",
-      "in_use": true
+      "last_boilout": "2025-11-19T00:00:00.000Z",
+      "in_use": true,
+      "next_boilout": "2025-12-24T00:00:00.000Z",
+      "next_filter_changes": [
+        "2025-12-01T00:00:00.000Z"
+      ]
     },
     {
       "name": "Wario",
       "type": 1,
-      "last_boilout": "2025-08-29T00:00:00.000Z",
-      "in_use": true
+      "last_boilout": "2025-11-12T00:00:00.000Z",
+      "in_use": true,
+      "next_boilout": "2025-12-17T00:00:00.000Z",
+      "next_filter_changes": [
+        "2025-11-24T00:00:00.000Z"
+      ]
     }
   ],
   "time_periods": {
-    "0": 36,
-    "1": 30,
-    "2": 15
+    "0": 25,
+    "1": 20,
+    "2": 10
   }
 }

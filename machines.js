@@ -135,12 +135,12 @@ async function load() {
         let data = JSON.parse(await fs.readFile("./config.json", 'utf-8'));
         if (data.machines == undefined || data.time_periods == undefined)
             throw new Error("Malformed config");
+        config.time_periods = data.time_periods;
         config.machines = data.machines;
         for (var i = 0; i < config.machines.length; i++) {
             config.machines[i].next_boilout = getNextBoilout(config.machines[i]);
             config.machines[i].next_filter_changes = getNextFilterChanges(config.machines[i]);
         }
-        config.time_periods = data.time_periods;
     } catch (e) {
         console.log(e);
         if (retry_count >= 3)
@@ -215,7 +215,6 @@ async function boilout(fryer_name, date, flip_cookmode, not_inuse) {
 function getNextBoilout(machine) {
     const last_boilout = machine.last_boilout;
     const next_boilout = addBusinessDays(last_boilout, config.time_periods[machine.type]);
-    console.log(`Last: ${last_boilout} Next: ${next_boilout}`);
     return next_boilout;
 }
 
