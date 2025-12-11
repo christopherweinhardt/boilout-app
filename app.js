@@ -47,7 +47,7 @@ function formatDateWithOrdinal(d) {
 }
 
 
-const CHANNEL_ID = "C09FJ60MC3W";//C08DX2NM3E3";
+const CHANNEL_ID = "C08DX2NM3E3";
 
 app.message(async ({ message, say, logger, client }) => {
   try {
