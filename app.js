@@ -320,6 +320,7 @@ app.command('/month', async ({ ack, payload }) => {
 });
 
 async function postWeekly(channel_id) {
+  console.log("Posting weekly schedule");
   let date = new Date();
   let week_boilouts = await getWeekSchedule(date);
 
@@ -366,9 +367,8 @@ async function postWeekly(channel_id) {
 
   // Generate the Slack Block Kit JSON
   const slackTableJson = createSlackTableFromJson(data);
-  await app.client.chat.postEphemeral({
-    channel: payload.channel_id,
-    user: userId,
+  await app.client.chat.postMessage({
+    channel: channel_id,
     text: `This week's boilout schedule:`,
     blocks: slackTableJson.blocks
   });
