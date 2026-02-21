@@ -1,4 +1,5 @@
 const { App } = require('@slack/bolt');
+const path = require('path');
 const APP_HOME = require('./views/app_home.json');
 const ADD_FRYER = require('./views/add_fryer.json');
 const SUBMIT_BUTTON = require('./views/submit_button.json');
