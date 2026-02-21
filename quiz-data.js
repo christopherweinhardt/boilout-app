@@ -5,7 +5,7 @@
 module.exports = [
   {
     id: 'q1',
-    question: '*True or False:* We don\'t add extra coater after flipping the filet to save coater usage.',
+    question: '*True or False:* We don\'t add extra coater after flipping the filet to save coater.',
     image_url: 'https://sandbloxmc.s3.us-east-2.amazonaws.com/cfa-filet-transfer-pan-bread-dsc01256.png',
     image_alt: 'Question',
     options: [

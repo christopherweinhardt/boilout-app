@@ -16,6 +16,7 @@ const { render, createSlackTableFromJson } = require('./table');
 const quizData = require('./quiz-data');
 
 const QUIZ_RESPONSES_FILE = path.join(__dirname, 'quiz-responses.json');
+const QUESTION_STATS_FILE = path.join(__dirname, 'question-stats.json');
 const QUIZ_MESSAGE_BLOCKS = (() => {
   try {
     const raw = fs.readFileSync(path.join(__dirname, 'quiz_message_block.json'), 'utf8');
@@ -390,6 +391,26 @@ async function postWeekly(channel_id) {
   });
 }
 
+function updateQuestionStats(feedback) {
+  if (!Array.isArray(feedback) || feedback.length === 0) return;
+  let stats = [];
+  try {
+    const raw = fs.readFileSync(QUESTION_STATS_FILE, 'utf8');
+    stats = JSON.parse(raw);
+  } catch (e) {
+    if (e.code !== 'ENOENT') console.error('Error reading question stats:', e.message);
+  }
+  while (stats.length < feedback.length) {
+    stats.push({ correct: 0, total: 0 });
+  }
+  feedback.forEach((item, i) => {
+    stats[i] = stats[i] || { correct: 0, total: 0 };
+    stats[i].total += 1;
+    if (item.correct) stats[i].correct += 1;
+  });
+  fs.writeFileSync(QUESTION_STATS_FILE, JSON.stringify(stats, null, 2), 'utf8');
+}
+
 const MODAL_TITLE = 'BOH Quality Quiz';
 const TOTAL_QUESTIONS = quizData.length;
 
@@ -655,6 +676,7 @@ app.action(/^quiz_answer_(.+)_(.+)$/, async ({ action, body, ack, client }) => {
     } catch (_) {}
     try {
       saveQuizResponse(username, displayName, userId, newScore, totalAnswered);
+      updateQuestionStats(newFeedback);
     } catch (err) {
       console.error('Failed to save quiz response:', err);
     }
