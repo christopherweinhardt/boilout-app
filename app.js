@@ -12,6 +12,21 @@ const cron = require('node-cron');
 const { add_fryer, load, boilout, getNextBoilout, getMachineType, getConfig, getMachineTypeString, getWeekSchedule, getMonthSchedule } = require('./machines');
 const { render, createSlackTableFromJson } = require('./table');
 
+const quizData = require('./quiz-data');
+
+const QUIZ_RESPONSES_FILE = path.join(__dirname, 'quiz-responses.json');
+const QUIZ_MESSAGE_BLOCKS = (() => {
+  try {
+    const raw = fs.readFileSync(path.join(__dirname, 'quiz_message_block.json'), 'utf8');
+    const data = JSON.parse(raw);
+    return data
+  } catch (e) {
+    console.error('Failed to load quiz_message_block.json:', e.message);
+    return [];
+  }
+})();
+
+
 // Initializes your app with your Slack app and bot token
 const app = new App({
   token: process.env.SLACK_BOT_TOKEN,
@@ -373,6 +388,277 @@ async function postWeekly(channel_id) {
     blocks: slackTableJson.blocks
   });
 }
+
+const MODAL_TITLE = 'BOH Quality Quiz';
+const TOTAL_QUESTIONS = quizData.length;
+
+/** Prebuilt question blocks (one per question) — computed once on load. */
+const PREBUILT_QUESTION_BLOCKS = quizData.map((question, questionIndex) => [
+  {
+    type: 'section',
+    text: {
+      type: 'mrkdwn',
+      text: `*Question ${questionIndex + 1} of ${TOTAL_QUESTIONS}*\n\n${question.question}`,
+    },
+    ...(question.image_url && {
+      accessory: {
+        type: 'image',
+        image_url: question.image_url,
+        alt_text: question.image_alt || 'Question image',
+      },
+    }),
+  },
+  {
+    type: 'actions',
+    block_id: 'answer_actions',
+    elements: question.options.map((opt) => ({
+      type: 'button',
+      text: { type: 'plain_text', text: opt.text, emoji: true },
+      action_id: `quiz_answer_${question.id}_${opt.value}`,
+      value: opt.value,
+    })),
+  },
+]);
+
+/** Build only the result + optional next-question blocks (minimal runtime work). */
+function buildModalUpdateBlocks(correct, correctAnswerText, score, total, isLast, nextIndex, feedback = []) {
+  const emoji = correct ? ':white_check_mark:' : ':x:';
+  const resultLine = correct
+    ? `*Correct!* ${emoji}  ·  Score: *${score} / ${total}*`
+    : `*Wrong.* The correct answer was: ${correctAnswerText} ${emoji}  ·  Score: *${score} / ${total}*`;
+
+  const blocks = [
+    { type: 'section', text: { type: 'mrkdwn', text: resultLine } },
+  ];
+
+  if (isLast) {
+    blocks.push({
+      type: 'section',
+      text: {
+        type: 'mrkdwn',
+        text: `:tada: *Quiz complete!* Final score: *${score} / ${total}*`,
+      },
+    });
+    if (feedback.length > 0) {
+      blocks.push({ type: 'divider' });
+      blocks.push({
+        type: 'section',
+        text: {
+          type: 'mrkdwn',
+          text: '*Summary of your responses:*',
+        },
+      });
+      feedback.forEach((item, i) => {
+        const q = quizData[i];
+        const questionLabel = q ? `*Question ${i + 1}:* ${q.question}` : `*Question ${i + 1}*`;
+        const yourAnswer = item.chosenText ? `• You answered: *${item.chosenText}* ` : '';
+        const line = item.correct
+          ? `• Correct :white_check_mark:`
+          : `• *Wrong* — correct answer was *${item.correctAnswerText}* :x:`;
+        blocks.push({
+          type: 'section',
+          text: { type: 'mrkdwn', text: `${questionLabel}\n${yourAnswer}\n${line}` },
+        });
+      });
+    }
+  } else {
+    blocks.push({ type: 'divider' }, ...PREBUILT_QUESTION_BLOCKS[nextIndex]);
+  }
+
+  return blocks;
+}
+
+/** Return true if this user has already completed the quiz. */
+function hasCompletedQuiz(userId) {
+  if (!userId) return false;
+  try {
+    const raw = fs.readFileSync(QUIZ_RESPONSES_FILE, 'utf8');
+    const list = JSON.parse(raw);
+    return Array.isArray(list) && list.some((entry) => entry.user_id === userId);
+  } catch (e) {
+    if (e.code !== 'ENOENT') console.error('Error reading quiz responses:', e.message);
+    return false;
+  }
+}
+
+/** Append a completed quiz response to the JSON file (username, display name, score, etc.). */
+function saveQuizResponse(username, displayName, userId, score, total) {
+  const entry = {
+    username,
+    display_name: displayName,
+    user_id: userId,
+    score,
+    total,
+    completed_at: new Date().toISOString(),
+  };
+  let list = [];
+  try {
+    const raw = fs.readFileSync(QUIZ_RESPONSES_FILE, 'utf8');
+    list = JSON.parse(raw);
+  } catch (e) {
+    if (e.code !== 'ENOENT') console.error('Error reading quiz responses:', e.message);
+  }
+  list.push(entry);
+  fs.writeFileSync(QUIZ_RESPONSES_FILE, JSON.stringify(list, null, 2), 'utf8');
+}
+
+// Slash command: /quiz — open quiz modal
+// Use trigger_id immediately (it expires in ~3s); then ack() so Slack doesn't show dispatch_failed
+app.action("quiz_start", async ({ action, body, ack, client }) => {
+  await ack();
+  if (hasCompletedQuiz(body.user.id)) {
+    try {
+      await client.chat.postEphemeral({
+        channel: body.channel.id,
+        user: body.user.id,
+        text: "You've already completed this quiz.",
+      });
+    } catch (err) {
+      console.error('Failed to post already-completed message:', err);
+    }
+    return;
+  }
+  try {
+    const privateMetadata = JSON.stringify({ questionIndex: 0, score: 0, feedback: [] });
+
+    await client.views.open({
+      view: {
+        type: 'modal',
+        title: { type: 'plain_text', text: MODAL_TITLE, emoji: true },
+        blocks: PREBUILT_QUESTION_BLOCKS[0],
+        private_metadata: privateMetadata,
+      },
+      trigger_id: body.trigger_id,
+    });
+  } catch (err) {
+    console.error('Quiz open modal error:', err);
+    try {
+      await client.chat.postEphemeral({
+        channel: body.channel.id,
+        user: body.user.id,
+        text: `Could not open quiz: ${err.message}. Try /quiz again.`,
+      });
+    } catch (e) {
+      console.error('Could not post ephemeral:', e);
+    }
+  }
+});
+
+// Only this user ID can run /quiz (post the quiz announcement).
+const QUIZ_POST_ALLOWED_USER_ID = 'U087M7E4LS3';
+
+// Slash command: /quiz — post the quiz announcement message (from quiz_message_block.json) to the channel
+app.command("/quiz", async ({ command, ack, client }) => {
+  await ack();
+  if (command.user_id !== QUIZ_POST_ALLOWED_USER_ID) {
+    try {
+      await client.chat.postEphemeral({
+        channel: command.channel_id,
+        user: command.user_id,
+        text: "You don't have permission to run this command.",
+      });
+    } catch (err) {
+      console.error('Failed to post permission-denied message:', err);
+    }
+    return;
+  }
+  if (QUIZ_MESSAGE_BLOCKS.length === 0) {
+    try {
+      await client.chat.postEphemeral({
+        channel: command.channel_id,
+        user: command.user_id,
+        text: 'Quiz message blocks could not be loaded. Check quiz_message_block.json.',
+      });
+    } catch (err) {
+      console.error('Failed to post ephemeral:', err);
+    }
+    return;
+  }
+  try {
+    await client.chat.postMessage({
+      channel: command.channel_id,
+      text: 'Monthly Quality Report – Please complete the quiz.',
+      blocks: QUIZ_MESSAGE_BLOCKS,
+    });
+  } catch (err) {
+    console.error('Quiz-post error:', err);
+    try {
+      await client.chat.postEphemeral({
+        channel: command.channel_id,
+        user: command.user_id,
+        text: `Failed to post quiz message: ${err.message}`,
+      });
+    } catch (e) {
+      console.error('Could not post ephemeral:', e);
+    }
+  }
+});
+
+// Handle answer button clicks in the modal (replace view each time)
+app.action(/^quiz_answer_(.+)_(.+)$/, async ({ action, body, ack, client }) => {
+  await ack();
+
+  const view = body.view;
+  if (!view || view.type !== 'modal') return;
+  const [, questionId, selectedValue] = action.action_id.match(/^quiz_answer_(.+)_(.+)$/);
+  let state = { questionIndex: 0, score: 0, feedback: [] };
+  try {
+    if (view.private_metadata) state = JSON.parse(view.private_metadata);
+  } catch (_) {}
+  state.feedback = state.feedback || [];
+
+  const question = quizData.find((q) => q.id === questionId);
+  if (!question) return;
+  const correctOption = question.options.find((o) => o.correct);
+  const chosen = question.options.find((o) => o.value === selectedValue);
+  const correct = chosen && chosen.correct;
+  const newScore = state.score + (correct ? 1 : 0);
+  const totalAnswered = state.questionIndex + 1;
+  const isLast = totalAnswered >= quizData.length;
+
+  const chosenText = chosen ? chosen.text : '';
+  const newFeedback = [...state.feedback, { correct, correctAnswerText: correctOption ? correctOption.text : '', chosenText }];
+  const nextIndex = state.questionIndex + 1;
+  const blocks = buildModalUpdateBlocks(
+    correct,
+    correctOption ? correctOption.text : '',
+    newScore,
+    totalAnswered,
+    isLast,
+    nextIndex,
+    isLast ? newFeedback : undefined
+  );
+
+  const privateMetadata = isLast ? '{}' : JSON.stringify({ questionIndex: nextIndex, score: newScore, feedback: newFeedback });
+
+  await client.views.update({
+    view_id: view.id,
+    hash: view.hash,
+    view: {
+      type: 'modal',
+      title: { type: 'plain_text', text: MODAL_TITLE, emoji: true },
+      blocks,
+      private_metadata: privateMetadata,
+    },
+  });
+
+  if (isLast) {
+    const userId = body.user?.id ?? '';
+    const username = (body.user?.name ?? userId) || 'unknown';
+    let displayName = username;
+    try {
+      if (userId) {
+        const res = await client.users.info({ user: userId });
+        displayName = res.user?.real_name ?? res.user?.profile?.display_name ?? username;
+      }
+    } catch (_) {}
+    try {
+      saveQuizResponse(username, displayName, userId, newScore, totalAnswered);
+    } catch (err) {
+      console.error('Failed to save quiz response:', err);
+    }
+  }
+});
 
 app.event('app_home_opened', async ({ event, client, logger }) => {
   try {
