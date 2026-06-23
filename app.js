@@ -11,7 +11,7 @@ const EMPTY_WEEKLY_SCHEDULE = require('./views/week_schedule_empty.json');
 const MONTH_SCHEDULE = require('./views/month_schedule.json');
 const { table } = require('table');
 const cron = require('node-cron');
-const { add_fryer, load, boilout, getNextBoilout, getMachineType, getConfig, getMachineTypeString, getWeekSchedule, getMonthSchedule, getTodayFilterChanges, toBusinessCalendarDate } = require('./machines');
+const { add_fryer, load, boilout, getNextBoilout, getMachineType, getConfig, getMachineTypeString, getWeekSchedule, getMonthSchedule, getTodayFilterChanges, toScheduleDateString, getTodayDateString } = require('./machines');
 const { render, createSlackTableFromJson } = require('./table');
 
 const quizData = require('./quiz-data');
@@ -150,7 +150,7 @@ app.view('boilout_submit', async ({ ack, body, view, client, logger }) => {
   let msg = '';
   // Save to DB
 
-  const results = boilout(fryer_name, new Date(boilout_date), change_cookmode, not_inuse);
+  const results = boilout(fryer_name, boilout_date, change_cookmode, not_inuse);
 
   if (!results) {
     msg = 'There was an error with your submission. Please let Chris know.';
@@ -359,11 +359,11 @@ function formatBusinessCalendarDate(ymd) {
 function parseFilterReminderDate(text) {
   const trimmed = (text || '').trim();
   if (!trimmed)
-    return { date: toBusinessCalendarDate(new Date()), error: null };
+    return { date: getTodayDateString(new Date()), error: null };
 
   const match = trimmed.match(/^(\d{4})-(\d{2})-(\d{2})$/);
   if (!match) {
-    return { date: null, error: 'Invalid date. Use YYYY-MM-DD (e.g. 2025-12-03) or leave blank for today.' };
+    return { date: null, error: 'Invalid date. Use YYYY-MM-DD (e.g. 2026-06-22) or leave blank for today.' };
   }
 
   const date = `${match[1]}-${match[2]}-${match[3]}`;
@@ -374,21 +374,25 @@ function parseFilterReminderDate(text) {
   return { date, error: null };
 }
 
-async function postFilterChangeReminders(channel_id, date = toBusinessCalendarDate(new Date())) {
+async function postFilterChangeReminders(channel_id, date = getTodayDateString(new Date())) {
   const due_filters = await getTodayFilterChanges(date);
   if (due_filters.length === 0)
     return { posted: false, filters: [], date };
 
   const machineNames = due_filters.map(f => `*${f.machine.name}*`).join(', ');
-  const todayStr = toBusinessCalendarDate(new Date());
+  const todayStr = getTodayDateString(new Date());
   const dateLabel = date === todayStr ? 'today' : `on ${formatBusinessCalendarDate(date)}`;
   const text = due_filters.length === 1
-    ? `<!channel> Filter change due ${dateLabel} for ${machineNames} — please complete the filter change.`
-    : `<!channel> Filter changes due ${dateLabel} for ${machineNames} — please complete the filter changes.`;
+    ? `<!channel> Filter change due ${dateLabel} for ${machineNames}. Please complete the filter change.`
+    : `<!channel> Filter changes due ${dateLabel} for ${machineNames}. Please complete the filter changes.`;
 
   await app.client.chat.postMessage({
     channel: channel_id,
     text,
+    blocks: [{
+      type: 'section',
+      text: { type: 'mrkdwn', text },
+    }],
   });
   return { posted: true, filters: due_filters, date };
 }
@@ -700,13 +704,21 @@ app.command('/filter-reminder', async ({ command, ack, client }) => {
     }
 
     const result = await postFilterChangeReminders(TEST_CHANNEL_ID, date);
-    const todayStr = toBusinessCalendarDate(new Date());
+    const todayStr = getTodayDateString(new Date());
     const dateLabel = date === todayStr ? 'today' : formatBusinessCalendarDate(date);
     if (!result.posted) {
+      const week = await getWeekSchedule(new Date());
+      let hint = `No filter changes are due on ${dateLabel} — nothing was posted.`;
+      if (week.filter_changes.length > 0) {
+        const upcoming = week.filter_changes
+          .map(f => `• ${f.machine.name} — \`${toScheduleDateString(f.date)}\``)
+          .join('\n');
+        hint += `\n\nFilter changes this week (use the date with /filter-reminder):\n${upcoming}`;
+      }
       await client.chat.postEphemeral({
         channel: command.channel_id,
         user: command.user_id,
-        text: `No filter changes are due on ${dateLabel} — nothing was posted.`,
+        text: hint,
       });
       return;
     }
@@ -820,7 +832,7 @@ app.event('app_home_opened', async ({ event, client, logger }) => {
   await app.start();
 
   cron.schedule('0 9 * * 1', () => { postWeekly(CHANNEL_ID) }, { timezone: "America/New_York" });
-  cron.schedule('0 9 * * *', () => { postFilterChangeReminders(CHANNEL_ID) }, { timezone: "America/New_York" });
+  cron.schedule('0 18 * * *', () => { postFilterChangeReminders(CHANNEL_ID) }, { timezone: "America/New_York" });
 
   app.logger.info('Boilout Bot is running!');
 })();

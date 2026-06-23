@@ -83,7 +83,14 @@ function addBusinessDays(dateLike, days) {
 
 const BUSINESS_TIMEZONE = 'America/New_York';
 
-function toBusinessCalendarDate(date) {
+/** Calendar date (YYYY-MM-DD) for schedule entries — matches /week column logic (UTC). */
+function toScheduleDateString(date) {
+    const d = new Date(date);
+    return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}-${String(d.getUTCDate()).padStart(2, '0')}`;
+}
+
+/** Today's calendar date in the business timezone (America/New_York). */
+function getTodayDateString(date = new Date()) {
     return new Intl.DateTimeFormat('en-CA', { timeZone: BUSINESS_TIMEZONE }).format(new Date(date));
 }
 
@@ -92,8 +99,8 @@ function isSameCalendarDay(dateToCheck, referenceDate) {
         return false;
     const targetDate = typeof referenceDate === 'string'
         ? referenceDate
-        : toBusinessCalendarDate(referenceDate);
-    return toBusinessCalendarDate(dateToCheck) === targetDate;
+        : toScheduleDateString(referenceDate);
+    return toScheduleDateString(dateToCheck) === targetDate;
 }
 
 function isDateInThisWeek(dateToCheck, today) {
@@ -287,14 +294,14 @@ async function getWeekSchedule(today = new Date()) {
 async function getTodayFilterChanges(referenceDate = new Date()) {
     const targetDate = typeof referenceDate === 'string'
         ? referenceDate
-        : toBusinessCalendarDate(referenceDate);
+        : getTodayDateString(referenceDate);
     let today_filters = [];
     for (var i = 0; i < config.machines.length; i++) {
         const machine = config.machines[i];
         if (!machine.in_use)
             continue;
         const next_filters = config.machines[i].next_filter_changes;
-        let filters = next_filters.filter(m => toBusinessCalendarDate(m) === targetDate);
+        let filters = next_filters.filter(m => toScheduleDateString(m) === targetDate);
         if (filters.length > 0) {
             filters.forEach(m => {
                 today_filters.push({ machine, date: new Date(m) });
@@ -330,4 +337,4 @@ async function getConfig() {
     return config;
 }
 
-export { load, add_fryer, boilout, getNextBoilout, getMachineType, getMonthSchedule, getWeekSchedule, getTodayFilterChanges, getConfig, getMachineTypeString, toBusinessCalendarDate }
+export { load, add_fryer, boilout, getNextBoilout, getMachineType, getMonthSchedule, getWeekSchedule, getTodayFilterChanges, getConfig, getMachineTypeString, toScheduleDateString, getTodayDateString }
