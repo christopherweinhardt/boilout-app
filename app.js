@@ -347,21 +347,46 @@ app.command('/month', async ({ ack, payload }) => {
   });
 });
 
-async function postFilterChangeReminders(channel_id) {
-  const today_filters = await getTodayFilterChanges(new Date());
-  if (today_filters.length === 0)
-    return { posted: false, filters: [] };
+function parseFilterReminderDate(text) {
+  const trimmed = (text || '').trim();
+  if (!trimmed)
+    return { date: new Date(), error: null };
 
-  const machineNames = today_filters.map(f => `*${f.machine.name}*`).join(', ');
-  const text = today_filters.length === 1
-    ? `<!channel> Filter change due today for ${machineNames} — please complete the filter change.`
-    : `<!channel> Filter changes due today for ${machineNames} — please complete the filter changes.`;
+  const match = trimmed.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!match) {
+    return { date: null, error: 'Invalid date. Use YYYY-MM-DD (e.g. 2025-12-03) or leave blank for today.' };
+  }
+
+  const date = new Date(`${match[1]}-${match[2]}-${match[3]}T12:00:00.000Z`);
+  if (isNaN(date.getTime()))
+    return { date: null, error: 'Invalid date.' };
+
+  return { date, error: null };
+}
+
+function isSameCalendarDay(dateToCheck, today) {
+  const d = new Date(dateToCheck);
+  return d.getUTCFullYear() === today.getUTCFullYear()
+    && d.getUTCMonth() === today.getUTCMonth()
+    && d.getUTCDate() === today.getUTCDate();
+}
+
+async function postFilterChangeReminders(channel_id, date = new Date()) {
+  const due_filters = await getTodayFilterChanges(date);
+  if (due_filters.length === 0)
+    return { posted: false, filters: [], date };
+
+  const machineNames = due_filters.map(f => `*${f.machine.name}*`).join(', ');
+  const dateLabel = isSameCalendarDay(date, new Date()) ? 'today' : `on ${formatScheduleDate(date)}`;
+  const text = due_filters.length === 1
+    ? `<!channel> Filter change due ${dateLabel} for ${machineNames} — please complete the filter change.`
+    : `<!channel> Filter changes due ${dateLabel} for ${machineNames} — please complete the filter changes.`;
 
   await app.client.chat.postMessage({
     channel: channel_id,
     text,
   });
-  return { posted: true, filters: today_filters };
+  return { posted: true, filters: due_filters, date };
 }
 
 async function postWeekly(channel_id) {
@@ -660,12 +685,23 @@ app.command('/filter-reminder', async ({ command, ack, client }) => {
     return;
   }
   try {
-    const result = await postFilterChangeReminders(TEST_CHANNEL_ID);
+    const { date, error } = parseFilterReminderDate(command.text);
+    if (error) {
+      await client.chat.postEphemeral({
+        channel: command.channel_id,
+        user: command.user_id,
+        text: error,
+      });
+      return;
+    }
+
+    const result = await postFilterChangeReminders(TEST_CHANNEL_ID, date);
+    const dateLabel = isSameCalendarDay(date, new Date()) ? 'today' : formatScheduleDate(date);
     if (!result.posted) {
       await client.chat.postEphemeral({
         channel: command.channel_id,
         user: command.user_id,
-        text: 'No filter changes are due today — nothing was posted.',
+        text: `No filter changes are due on ${dateLabel} — nothing was posted.`,
       });
       return;
     }
@@ -673,7 +709,7 @@ app.command('/filter-reminder', async ({ command, ack, client }) => {
     await client.chat.postEphemeral({
       channel: command.channel_id,
       user: command.user_id,
-      text: `Posted filter change reminder to <#${CHANNEL_ID}> for: ${names}`,
+      text: `Posted filter change reminder to <#${TEST_CHANNEL_ID}> for ${dateLabel}: ${names}`,
     });
   } catch (err) {
     console.error('Filter-reminder error:', err);
