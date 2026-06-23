@@ -11,7 +11,7 @@ const EMPTY_WEEKLY_SCHEDULE = require('./views/week_schedule_empty.json');
 const MONTH_SCHEDULE = require('./views/month_schedule.json');
 const { table } = require('table');
 const cron = require('node-cron');
-const { add_fryer, load, boilout, getNextBoilout, getMachineType, getConfig, getMachineTypeString, getWeekSchedule, getMonthSchedule, getTodayFilterChanges } = require('./machines');
+const { add_fryer, load, boilout, getNextBoilout, getMachineType, getConfig, getMachineTypeString, getWeekSchedule, getMonthSchedule, getTodayFilterChanges, toBusinessCalendarDate } = require('./machines');
 const { render, createSlackTableFromJson } = require('./table');
 
 const quizData = require('./quiz-data');
@@ -347,37 +347,41 @@ app.command('/month', async ({ ack, payload }) => {
   });
 });
 
+function formatBusinessCalendarDate(ymd) {
+  const [, month, day] = ymd.split('-').map(Number);
+  const monthNames = [
+    "January", "February", "March", "April", "May", "June",
+    "July", "August", "September", "October", "November", "December"
+  ];
+  return `${monthNames[month - 1]} ${day}`;
+}
+
 function parseFilterReminderDate(text) {
   const trimmed = (text || '').trim();
   if (!trimmed)
-    return { date: new Date(), error: null };
+    return { date: toBusinessCalendarDate(new Date()), error: null };
 
   const match = trimmed.match(/^(\d{4})-(\d{2})-(\d{2})$/);
   if (!match) {
     return { date: null, error: 'Invalid date. Use YYYY-MM-DD (e.g. 2025-12-03) or leave blank for today.' };
   }
 
-  const date = new Date(`${match[1]}-${match[2]}-${match[3]}T12:00:00.000Z`);
-  if (isNaN(date.getTime()))
+  const date = `${match[1]}-${match[2]}-${match[3]}`;
+  const parsed = new Date(`${date}T12:00:00.000Z`);
+  if (isNaN(parsed.getTime()))
     return { date: null, error: 'Invalid date.' };
 
   return { date, error: null };
 }
 
-function isSameCalendarDay(dateToCheck, today) {
-  const d = new Date(dateToCheck);
-  return d.getUTCFullYear() === today.getUTCFullYear()
-    && d.getUTCMonth() === today.getUTCMonth()
-    && d.getUTCDate() === today.getUTCDate();
-}
-
-async function postFilterChangeReminders(channel_id, date = new Date()) {
+async function postFilterChangeReminders(channel_id, date = toBusinessCalendarDate(new Date())) {
   const due_filters = await getTodayFilterChanges(date);
   if (due_filters.length === 0)
     return { posted: false, filters: [], date };
 
   const machineNames = due_filters.map(f => `*${f.machine.name}*`).join(', ');
-  const dateLabel = isSameCalendarDay(date, new Date()) ? 'today' : `on ${formatScheduleDate(date)}`;
+  const todayStr = toBusinessCalendarDate(new Date());
+  const dateLabel = date === todayStr ? 'today' : `on ${formatBusinessCalendarDate(date)}`;
   const text = due_filters.length === 1
     ? `<!channel> Filter change due ${dateLabel} for ${machineNames} — please complete the filter change.`
     : `<!channel> Filter changes due ${dateLabel} for ${machineNames} — please complete the filter changes.`;
@@ -696,7 +700,8 @@ app.command('/filter-reminder', async ({ command, ack, client }) => {
     }
 
     const result = await postFilterChangeReminders(TEST_CHANNEL_ID, date);
-    const dateLabel = isSameCalendarDay(date, new Date()) ? 'today' : formatScheduleDate(date);
+    const todayStr = toBusinessCalendarDate(new Date());
+    const dateLabel = date === todayStr ? 'today' : formatBusinessCalendarDate(date);
     if (!result.posted) {
       await client.chat.postEphemeral({
         channel: command.channel_id,
