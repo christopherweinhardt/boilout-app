@@ -81,6 +81,15 @@ function addBusinessDays(dateLike, days) {
     return result;
 }
 
+function isSameCalendarDay(dateToCheck, today) {
+    if (!dateToCheck)
+        return false;
+    const d = new Date(dateToCheck);
+    return d.getUTCFullYear() === today.getUTCFullYear()
+        && d.getUTCMonth() === today.getUTCMonth()
+        && d.getUTCDate() === today.getUTCDate();
+}
+
 function isDateInThisWeek(dateToCheck, today) {
     if (!dateToCheck)
         return false;
@@ -269,6 +278,23 @@ async function getWeekSchedule(today = new Date()) {
  * 
  * @returns {Schedule} machines
  */
+async function getTodayFilterChanges(today = new Date()) {
+    let today_filters = [];
+    for (var i = 0; i < config.machines.length; i++) {
+        const machine = config.machines[i];
+        if (!machine.in_use)
+            continue;
+        const next_filters = config.machines[i].next_filter_changes;
+        let filters = next_filters.filter(m => isSameCalendarDay(m, today));
+        if (filters.length > 0) {
+            filters.forEach(m => {
+                today_filters.push({ machine, date: new Date(m) });
+            });
+        }
+    }
+    return today_filters;
+}
+
 async function getMonthSchedule() {
     // loop through machines
     let month_boilouts = [];
@@ -278,7 +304,7 @@ async function getMonthSchedule() {
         const next_filters = config.machines[i].next_filter_changes;
         const now = new Date();
         month_boilouts.push({ machine: config.machines[i], date: new Date(next_boilout) });
-        let filters = next_filters.filter(m => new Date(m).getMonth() == now.getMonth());
+        let filters = next_filters.filter(m => new Date(m).getUTCMonth() == now.getUTCMonth());
         if (filters.length > 0) {
             filters.forEach(m => {
                 month_filters.push({ machine: config.machines[i], date: new Date(m) });
@@ -295,4 +321,4 @@ async function getConfig() {
     return config;
 }
 
-export { load, add_fryer, boilout, getNextBoilout, getMachineType, getMonthSchedule, getWeekSchedule, getConfig, getMachineTypeString }
+export { load, add_fryer, boilout, getNextBoilout, getMachineType, getMonthSchedule, getWeekSchedule, getTodayFilterChanges, getConfig, getMachineTypeString }

@@ -11,7 +11,7 @@ const EMPTY_WEEKLY_SCHEDULE = require('./views/week_schedule_empty.json');
 const MONTH_SCHEDULE = require('./views/month_schedule.json');
 const { table } = require('table');
 const cron = require('node-cron');
-const { add_fryer, load, boilout, getNextBoilout, getMachineType, getConfig, getMachineTypeString, getWeekSchedule, getMonthSchedule } = require('./machines');
+const { add_fryer, load, boilout, getNextBoilout, getMachineType, getConfig, getMachineTypeString, getWeekSchedule, getMonthSchedule, getTodayFilterChanges } = require('./machines');
 const { render, createSlackTableFromJson } = require('./table');
 
 const quizData = require('./quiz-data');
@@ -64,8 +64,18 @@ function formatDateWithOrdinal(d) {
   return `${monthNames[d.getMonth()]} ${day}${suffix}`;
 }
 
+// Schedule dates are stored as midnight UTC; match /week's getUTCDay() column logic.
+function formatScheduleDate(d) {
+  const monthNames = [
+    "January", "February", "March", "April", "May", "June",
+    "July", "August", "September", "October", "November", "December"
+  ];
+  return `${monthNames[d.getUTCMonth()]} ${d.getUTCDate()}`;
+}
+
 
 const CHANNEL_ID = "C08DX2NM3E3";
+const TEST_CHANNEL_ID = "C09FJ60MC3W";
 
 app.message(async ({ message, say, logger, client }) => {
   try {
@@ -316,7 +326,7 @@ app.command('/month', async ({ ack, payload }) => {
     let boilout = month_schedule.boilouts[i];
     console.log(boilout)
     let entry = JSON.parse(JSON.stringify(boilout_schedule_entry))
-    entry.text.text = `• ${boilout.machine.name} - ${boilout.date.toLocaleString("en-US", { month: "long", day: "numeric" })}`
+    entry.text.text = `• ${boilout.machine.name} - ${formatScheduleDate(boilout.date)}`
     schedule.push(entry);
   }
   let entry2 = JSON.parse(JSON.stringify(boilout_schedule_entry))
@@ -325,7 +335,7 @@ app.command('/month', async ({ ack, payload }) => {
   for (var i = 0; i < month_schedule.filter_changes.length; i++) {
     let filter_change = month_schedule.filter_changes[i];
     let entry = JSON.parse(JSON.stringify(boilout_schedule_entry))
-    entry.text.text = `• ${filter_change.machine.name} - ${filter_change.date.toLocaleString("en-US", { month: "long", day: "numeric" })}`
+    entry.text.text = `• ${filter_change.machine.name} - ${formatScheduleDate(filter_change.date)}`
     schedule.push(entry);
   }
 
@@ -336,6 +346,23 @@ app.command('/month', async ({ ack, payload }) => {
     blocks: schedule
   });
 });
+
+async function postFilterChangeReminders(channel_id) {
+  const today_filters = await getTodayFilterChanges(new Date());
+  if (today_filters.length === 0)
+    return { posted: false, filters: [] };
+
+  const machineNames = today_filters.map(f => `*${f.machine.name}*`).join(', ');
+  const text = today_filters.length === 1
+    ? `<!channel> Filter change due today for ${machineNames} — please complete the filter change.`
+    : `<!channel> Filter changes due today for ${machineNames} — please complete the filter changes.`;
+
+  await app.client.chat.postMessage({
+    channel: channel_id,
+    text,
+  });
+  return { posted: true, filters: today_filters };
+}
 
 async function postWeekly(channel_id) {
   console.log("Posting weekly schedule");
@@ -567,13 +594,13 @@ app.action("quiz_start", async ({ action, body, ack, client }) => {
   }
 });
 
-// Only this user ID can run /quiz (post the quiz announcement).
-const QUIZ_POST_ALLOWED_USER_ID = 'U087M7E4LS3';
+// Only this user ID can run admin slash commands.
+const ADMIN_USER_ID = 'U087M7E4LS3';
 
 // Slash command: /quiz — post the quiz announcement message (from quiz_message_block.json) to the channel
 app.command("/quiz", async ({ command, ack, client }) => {
   await ack();
-  if (command.user_id !== QUIZ_POST_ALLOWED_USER_ID) {
+  if (command.user_id !== ADMIN_USER_ID) {
     try {
       await client.chat.postEphemeral({
         channel: command.channel_id,
@@ -610,6 +637,51 @@ app.command("/quiz", async ({ command, ack, client }) => {
         channel: command.channel_id,
         user: command.user_id,
         text: `Failed to post quiz message: ${err.message}`,
+      });
+    } catch (e) {
+      console.error('Could not post ephemeral:', e);
+    }
+  }
+});
+
+// Slash command: /filter-reminder — manually post today's filter change reminder to the boilout channel
+app.command('/filter-reminder', async ({ command, ack, client }) => {
+  await ack();
+  if (command.user_id !== ADMIN_USER_ID) {
+    try {
+      await client.chat.postEphemeral({
+        channel: command.channel_id,
+        user: command.user_id,
+        text: "You don't have permission to run this command.",
+      });
+    } catch (err) {
+      console.error('Failed to post permission-denied message:', err);
+    }
+    return;
+  }
+  try {
+    const result = await postFilterChangeReminders(TEST_CHANNEL_ID);
+    if (!result.posted) {
+      await client.chat.postEphemeral({
+        channel: command.channel_id,
+        user: command.user_id,
+        text: 'No filter changes are due today — nothing was posted.',
+      });
+      return;
+    }
+    const names = result.filters.map(f => f.machine.name).join(', ');
+    await client.chat.postEphemeral({
+      channel: command.channel_id,
+      user: command.user_id,
+      text: `Posted filter change reminder to <#${CHANNEL_ID}> for: ${names}`,
+    });
+  } catch (err) {
+    console.error('Filter-reminder error:', err);
+    try {
+      await client.chat.postEphemeral({
+        channel: command.channel_id,
+        user: command.user_id,
+        text: `Failed to post filter reminder: ${err.message}`,
       });
     } catch (e) {
       console.error('Could not post ephemeral:', e);
@@ -707,6 +779,7 @@ app.event('app_home_opened', async ({ event, client, logger }) => {
   await app.start();
 
   cron.schedule('0 9 * * 1', () => { postWeekly(CHANNEL_ID) }, { timezone: "America/New_York" });
+  cron.schedule('0 9 * * *', () => { postFilterChangeReminders(CHANNEL_ID) }, { timezone: "America/New_York" });
 
   app.logger.info('Boilout Bot is running!');
 })();
