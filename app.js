@@ -75,6 +75,7 @@ function formatScheduleDate(d) {
 
 
 const CHANNEL_ID = "C08DX2NM3E3";
+const BOH_GENERAL_CHANNEL_ID = "C087UN3UZ4J";
 const TEST_CHANNEL_ID = "C09FJ60MC3W";
 
 app.message(async ({ message, say, logger, client }) => {
@@ -832,7 +833,7 @@ app.event('app_home_opened', async ({ event, client, logger }) => {
   await app.start();
 
   cron.schedule('0 9 * * 1', () => { postWeekly(CHANNEL_ID) }, { timezone: "America/New_York" });
-  cron.schedule('0 18 * * *', () => { postFilterChangeReminders(CHANNEL_ID) }, { timezone: "America/New_York" });
+  cron.schedule('0 18 * * *', () => { postFilterChangeReminders(BOH_GENERAL_CHANNEL_ID) }, { timezone: "America/New_York" });
 
   app.logger.info('Boilout Bot is running!');
 })();
