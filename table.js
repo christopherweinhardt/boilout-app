@@ -1,8 +1,4 @@
-import { createRequire } from 'module';
-const require = createRequire(import.meta.url);
-
-const fs = require('fs/promises');
-const { createCanvas, loadImage } = require('canvas')
+const { createCanvas } = require('canvas');
 const width = 2100;
 const height = 300;
 const canvas = createCanvas(width, height);
@@ -148,4 +144,4 @@ function createSlackTableFromJson(inputData) {
   };
 }
 
-export { render, createSlackTableFromJson }
+module.exports = { render, createSlackTableFromJson };

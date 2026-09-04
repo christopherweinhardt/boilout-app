@@ -4,27 +4,65 @@
     "minor_version": 1
   },
   "display_information": {
-    "name": "boilout-app"
+    "name": "Chick-fil-A Bot",
+    "description": "Boilout and filter-change scheduling for restaurant kitchens"
   },
   "features": {
     "app_home": {
-      "home_tab_enabled": false,
+      "home_tab_enabled": true,
       "messages_tab_enabled": true,
       "messages_tab_read_only_enabled": false
     },
     "bot_user": {
-      "display_name": "boilout-app",
-      "always_online": false
-    }
+      "display_name": "Chick-fil-A Bot",
+      "always_online": true
+    },
+    "slash_commands": [
+      {
+        "command": "/week",
+        "description": "Show this week's boilout and filter schedule",
+        "should_escape": false
+      },
+      {
+        "command": "/month",
+        "description": "Show this month's boilout and filter schedule",
+        "should_escape": false
+      },
+      {
+        "command": "/quiz",
+        "description": "Post the BOH quality quiz announcement (admins only)",
+        "should_escape": false
+      },
+      {
+        "command": "/filter-reminder",
+        "description": "Post filter-change reminders (admins only)",
+        "usage_hint": "YYYY-MM-DD",
+        "should_escape": false
+      },
+      {
+        "command": "/boilout-setup",
+        "description": "Show this workplace's team ID and settings file path",
+        "should_escape": false
+      }
+    ]
   },
   "oauth_config": {
+    "redirect_urls": ["https://cfaslack.app/slack/oauth_redirect"],
     "scopes": {
-      "bot": ["channels:history", "chat:write"]
+      "bot": [
+        "channels:history",
+        "groups:history",
+        "chat:write",
+        "files:read",
+        "users:read",
+        "im:write",
+        "commands"
+      ]
     }
   },
   "settings": {
     "event_subscriptions": {
-      "bot_events": ["message.channels"]
+      "bot_events": ["message.channels", "message.groups", "app_home_opened"]
     },
     "interactivity": {
       "is_enabled": true

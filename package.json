@@ -1,7 +1,7 @@
 {
   "name": "bolt-js-blank-template",
   "version": "1.0.0",
-  "description": "A blank template for Slack apps",
+  "description": "Multi-workplace Slack bot for fryer boilout and filter-change schedules",
   "main": "app.js",
   "scripts": {
     "lint": "npx @biomejs/biome check",
@@ -25,6 +25,7 @@
   "homepage": "https://github.com/slack-samples/bolt-js-blank-template#readme",
   "dependencies": {
     "@slack/bolt": "^4.4.0",
+    "@slack/oauth": "^3.0.3",
     "canvas": "^3.2.0",
     "node-cron": "^4.2.1",
     "sqlite3": "^5.1.7",
