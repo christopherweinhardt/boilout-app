@@ -1,0 +1,10 @@
+{
+  "channels": {
+    "boilout": "C08DX2NM3E3",
+    "boh_general": "C087UN3UZ4J",
+    "filter_reminder": "C087UN3UZ4J",
+    "notify_user": "U087M7E4LS3"
+  },
+  "admin_user_ids": ["U087M7E4LS3"],
+  "timezone": "America/New_York"
+}
