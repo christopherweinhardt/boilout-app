@@ -37,7 +37,7 @@ Visit `https://YOUR_PUBLIC_HOST/slack/install` (or `http://localhost:3000/slack/
    | --- | --- |
    | `channels.boilout` | Image submit flow and Monday 9am weekly schedule |
    | `channels.boh_general` | Daily 6pm filter reminders |
-   | `channels.filter_reminder` | `/filter-reminder` target (optional; defaults to `boh_general`) |
+   | `channels.test_channel` | `/filter-reminder` target (optional; defaults to `boh_general`) |
    | `channels.notify_user` | User or DM to notify when a boilout is submitted |
    | `admin_user_ids` | Users allowed to run `/quiz` and `/filter-reminder` |
    | `timezone` | Calendar dates for “today” (cron still fires on America/New_York) |
@@ -75,7 +75,7 @@ The previous hardcoded IDs for the original store (replace with that workplace�
   "channels": {
     "boilout": "C08DX2NM3E3",
     "boh_general": "C087UN3UZ4J",
-    "filter_reminder": "C09FJ60MC3W",
+    "test_channel": "C09FJ60MC3W",
     "notify_user": "D09BQ43A9K2"
   },
   "admin_user_ids": ["U087M7E4LS3"],
