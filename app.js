@@ -941,7 +941,7 @@ app.command('/filter-reminder', async ({ command, ack, client, context }) => {
       return;
     }
 
-    const reminderChannel = settings.channels.filter_reminder;
+    const reminderChannel = settings.channels.test_channel;
     const result = await postFilterChangeReminders({
       teamId,
       channelId: reminderChannel,
@@ -1007,7 +1007,7 @@ app.command('/boilout-setup', async ({ command, ack, client, context }) => {
     lines.push(
       `Boilout channel: <#${settings.channels.boilout}>`,
       `BOH channel: <#${settings.channels.boh_general}>`,
-      `Filter reminder channel: <#${settings.channels.filter_reminder}>`,
+      `Filter reminder channel: <#${settings.channels.test_channel}>`,
       `Notify: ${settings.channels.notify_user || '(not set)'}`,
       `Admins: ${settings.admin_user_ids.map((id) => `<@${id}>`).join(', ') || '(none)'}`,
       `Timezone: ${settings.timezone}`,

@@ -2,7 +2,7 @@
   "channels": {
     "boilout": "C0123456789",
     "boh_general": "C0123456789",
-    "filter_reminder": "C0123456789",
+    "test_channel": "C0123456789",
     "notify_user": "U0123456789"
   },
   "admin_user_ids": ["U0123456789"],

@@ -46,7 +46,7 @@ function normalizeSettings(raw, workspaceId) {
     channels: {
       boilout: channels.boilout,
       boh_general: channels.boh_general,
-      filter_reminder: channels.filter_reminder || channels.boh_general,
+      test_channel: channels.test_channel || channels.boh_general,
       notify_user: channels.notify_user,
     },
     admin_user_ids: Array.isArray(raw.admin_user_ids) ? raw.admin_user_ids : [],
