@@ -1,0 +1,85 @@
+{
+  "machines": [
+    {
+      "name": "Piranha Plant",
+      "type": 2,
+      "last_boilout": "2026-06-05T00:00:00.000Z",
+      "in_use": true,
+      "next_boilout": "2026-06-29T00:00:00.000Z",
+      "next_filter_changes": []
+    },
+    {
+      "name": "Bullet Bill",
+      "type": 2,
+      "last_boilout": "2026-05-27T00:00:00.000Z",
+      "in_use": false,
+      "next_boilout": "2026-06-19T00:00:00.000Z",
+      "next_filter_changes": []
+    },
+    {
+      "name": "Luigi",
+      "type": 0,
+      "last_boilout": "2025-10-07T00:00:00.000Z",
+      "in_use": true,
+      "next_boilout": "2025-11-05T01:00:00.000Z",
+      "next_filter_changes": [
+        "2025-10-24T00:00:00.000Z"
+      ]
+    },
+    {
+      "name": "Yoshi",
+      "type": 1,
+      "last_boilout": "2026-06-23T00:00:00.000Z",
+      "in_use": true,
+      "next_boilout": "2026-07-16T00:00:00.000Z",
+      "next_filter_changes": [
+        "2026-07-04T00:00:00.000Z"
+      ]
+    },
+    {
+      "name": "Waluigi",
+      "type": 0,
+      "last_boilout": "2026-06-04T00:00:00.000Z",
+      "in_use": true,
+      "next_boilout": "2026-07-03T00:00:00.000Z",
+      "next_filter_changes": [
+        "2026-06-22T00:00:00.000Z"
+      ]
+    },
+    {
+      "name": "Toad",
+      "type": 0,
+      "last_boilout": "2026-06-10T00:00:00.000Z",
+      "in_use": true,
+      "next_boilout": "2026-07-09T00:00:00.000Z",
+      "next_filter_changes": [
+        "2026-06-27T00:00:00.000Z"
+      ]
+    },
+    {
+      "name": "Mario",
+      "type": 1,
+      "last_boilout": "2026-06-03T00:00:00.000Z",
+      "in_use": true,
+      "next_boilout": "2026-06-26T00:00:00.000Z",
+      "next_filter_changes": [
+        "2026-06-15T00:00:00.000Z"
+      ]
+    },
+    {
+      "name": "Wario",
+      "type": 1,
+      "last_boilout": "2026-06-01T00:00:00.000Z",
+      "in_use": true,
+      "next_boilout": "2026-06-24T00:00:00.000Z",
+      "next_filter_changes": [
+        "2026-06-12T00:00:00.000Z"
+      ]
+    }
+  ],
+  "time_periods": {
+    "0": 25,
+    "1": 20,
+    "2": 20
+  }
+}
