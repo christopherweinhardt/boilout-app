@@ -1,10 +1,138 @@
 [
   {
+    "username": "shailja.cfakitchener",
+    "display_name": "Shailja",
+    "user_id": "U0869A94YDP",
+    "score": 4,
+    "total": 5,
+    "completed_at": "2026-02-21T23:54:32.742Z"
+  },
+  {
+    "username": "jashneetsaggu",
+    "display_name": "Jashneet Singh",
+    "user_id": "U0881PUJWP4",
+    "score": 5,
+    "total": 5,
+    "completed_at": "2026-02-22T00:04:59.069Z"
+  },
+  {
+    "username": "timothyweinhardt",
+    "display_name": "Timothy Weinhardt",
+    "user_id": "U08QH19RBBP",
+    "score": 5,
+    "total": 5,
+    "completed_at": "2026-02-22T00:12:23.427Z"
+  },
+  {
+    "username": "gawmanj",
+    "display_name": "Jayden Gawman",
+    "user_id": "U08849Q6XGC",
+    "score": 2,
+    "total": 5,
+    "completed_at": "2026-02-22T00:15:00.377Z"
+  },
+  {
+    "username": "bonvishah97",
+    "display_name": "Bonvi Shah",
+    "user_id": "U0881P0PP7C",
+    "score": 3,
+    "total": 5,
+    "completed_at": "2026-02-22T00:22:15.929Z"
+  },
+  {
+    "username": "jordannlemus",
+    "display_name": "Jordan Lemus",
+    "user_id": "U0A0FJRSUFR",
+    "score": 3,
+    "total": 5,
+    "completed_at": "2026-02-22T01:36:09.736Z"
+  },
+  {
     "username": "weinhardtchristopher",
     "display_name": "Christopher Weinhardt",
     "user_id": "U087M7E4LS3",
+    "score": 5,
+    "total": 5,
+    "completed_at": "2026-02-22T06:28:02.357Z"
+  },
+  {
+    "username": "callumbusch",
+    "display_name": "Callum",
+    "user_id": "U087M7ETXFH",
+    "score": 3,
+    "total": 5,
+    "completed_at": "2026-02-23T19:35:24.843Z"
+  },
+  {
+    "username": "javeedbaksh13",
+    "display_name": "Javeed",
+    "user_id": "U087V5QHKE2",
     "score": 4,
     "total": 5,
-    "completed_at": "2026-02-21T23:38:00.623Z"
+    "completed_at": "2026-02-27T17:58:11.884Z"
+  },
+  {
+    "username": "santhosh0ay75",
+    "display_name": "Santhosh Santhappan",
+    "user_id": "U0AAK2ZBACU",
+    "score": 4,
+    "total": 5,
+    "completed_at": "2026-02-27T18:03:10.682Z"
+  },
+  {
+    "username": "miguel.morenosilva06",
+    "display_name": "Miguel",
+    "user_id": "U0A25A9TE87",
+    "score": 3,
+    "total": 5,
+    "completed_at": "2026-02-27T18:03:48.655Z"
+  },
+  {
+    "username": "kavoos1997",
+    "display_name": "Kavya Kamal",
+    "user_id": "U08859YGZMG",
+    "score": 5,
+    "total": 5,
+    "completed_at": "2026-02-27T18:29:59.347Z"
+  },
+  {
+    "username": "jithinjs37",
+    "display_name": "Jithin Jayakumar Santhakumari",
+    "user_id": "U0881MAUVKM",
+    "score": 5,
+    "total": 5,
+    "completed_at": "2026-02-27T18:55:07.820Z"
+  },
+  {
+    "username": "kapsravs",
+    "display_name": "Sravika Kapuram",
+    "user_id": "U0897AUP42X",
+    "score": 3,
+    "total": 5,
+    "completed_at": "2026-02-27T18:58:21.437Z"
+  },
+  {
+    "username": "reed.normore",
+    "display_name": "Reed Normore",
+    "user_id": "U08894XACTE",
+    "score": 4,
+    "total": 5,
+    "completed_at": "2026-02-27T21:18:56.441Z"
+  },
+  {
+    "username": "abinrajst",
+    "display_name": "Abin Raj",
+    "user_id": "U0881LG3T99",
+    "score": 3,
+    "total": 5,
+    "completed_at": "2026-02-28T03:58:52.498Z"
+  },
+  {
+    "username": "ggladstone",
+    "display_name": "Garland Gladstone",
+    "user_id": "U0A0QLANQHZ",
+    "score": 1,
+    "total": 5,
+    "completed_at": "2026-02-28T13:45:18.545Z"
   }
 ]
