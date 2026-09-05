@@ -514,7 +514,6 @@ app.command('/month', async ({ ack, client, payload, context, command }) => {
   schedule.push(entry1);
   for (let i = 0; i < month_schedule.boilouts.length; i++) {
     const item = month_schedule.boilouts[i];
-    console.log(item);
     const entry = JSON.parse(JSON.stringify(boilout_schedule_entry));
     entry.text.text = `• ${item.machine.name} - ${formatScheduleDate(item.date)}`;
     schedule.push(entry);

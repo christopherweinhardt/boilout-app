@@ -293,6 +293,7 @@ async function getTodayFilterChanges(
 
 async function getMonthSchedule(teamId) {
   const config = await load(teamId);
+  console.log(config);
   const month_boilouts = [];
   const month_filters = [];
   const now = new Date();
