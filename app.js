@@ -479,35 +479,21 @@ const boilout_schedule_entry = {
   },
 };
 
-app.command('/month', async ({ ack, client, payload, context, command }) => {
-  await ack();
-  console.log('Processing /month...');
-
-  const teamId = resolveWorkspaceId({ context, payload, command });
-  const settings = await requireConfiguredSettings(
-    teamId,
-    client,
-    payload.channel_id,
-    payload.user_id,
-  );
-  if (!settings) return;
-
-  const userId = payload.user_id;
-  const date = new Date();
+async function buildMonthScheduleBlocks(teamId, date = new Date()) {
   const month_schedule = await getMonthSchedule(teamId);
   month_schedule.boilouts.sort((a, b) => new Date(a.date) - new Date(b.date));
   month_schedule.filter_changes.sort(
     (a, b) => new Date(a.date) - new Date(b.date),
   );
 
-  const schedule = JSON.parse(JSON.stringify(MONTH_SCHEDULE));
   if (
     month_schedule.boilouts.length === 0 &&
     month_schedule.filter_changes.length === 0
   ) {
-    return;
+    return null;
   }
 
+  const schedule = JSON.parse(JSON.stringify(MONTH_SCHEDULE));
   schedule[0].text.text = `*Month of ${date.toLocaleString('default', { month: 'long' })}*`;
   const entry1 = JSON.parse(JSON.stringify(boilout_schedule_entry));
   entry1.text.text = 'Boil Outs:';
@@ -527,10 +513,28 @@ app.command('/month', async ({ ack, client, payload, context, command }) => {
     entry.text.text = `• ${filter_change.machine.name} - ${formatScheduleDate(filter_change.date)}`;
     schedule.push(entry);
   }
+  return schedule;
+}
+
+app.command('/month', async ({ ack, client, payload, context, command }) => {
+  await ack();
+  console.log('Processing /month...');
+
+  const teamId = resolveWorkspaceId({ context, payload, command });
+  const settings = await requireConfiguredSettings(
+    teamId,
+    client,
+    payload.channel_id,
+    payload.user_id,
+  );
+  if (!settings) return;
+
+  const schedule = await buildMonthScheduleBlocks(teamId);
+  if (!schedule) return;
 
   await client.chat.postEphemeral({
     channel: payload.channel_id,
-    user: userId,
+    user: payload.user_id,
     text: 'This months boilout schedule:',
     blocks: schedule,
   });
@@ -673,6 +677,21 @@ async function postWeekly({ teamId, channelId, token }) {
     text: "This week's boilout schedule:",
     blocks: slackTableJson.blocks,
   });
+}
+
+async function postMonthly({ teamId, channelId, token }) {
+  console.log(`Posting monthly schedule for ${teamId}`);
+  const schedule = await buildMonthScheduleBlocks(teamId);
+  if (!schedule) return;
+
+  const message = {
+    channel: channelId,
+    text: 'This months boilout schedule:',
+    blocks: schedule,
+  };
+  if (token) message.token = token;
+
+  await app.client.chat.postMessage(message);
 }
 
 function updateQuestionStats(teamId, feedback) {
@@ -1162,6 +1181,22 @@ async function runForConfiguredWorkspaces(fn, label) {
             token,
           }),
         'weekly schedule',
+      );
+    },
+    { timezone: DEFAULT_TIMEZONE },
+  );
+
+  cron.schedule(
+    '0 9 1 * *',
+    () => {
+      runForConfiguredWorkspaces(
+        (settings, token) =>
+          postMonthly({
+            teamId: settings.workspaceId,
+            channelId: settings.channels.boilout,
+            token,
+          }),
+        'monthly schedule',
       );
     },
     { timezone: DEFAULT_TIMEZONE },

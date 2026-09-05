@@ -35,7 +35,7 @@ Visit `https://YOUR_PUBLIC_HOST/slack/install` (or `http://localhost:3000/slack/
 
    | Field | Purpose |
    | --- | --- |
-   | `channels.boilout` | Image submit flow and Monday 9am weekly schedule |
+   | `channels.boilout` | Image submit flow, Monday 9am weekly schedule, and 1st-of-month 9am monthly schedule |
    | `channels.boh_general` | Daily 6pm filter reminders |
    | `channels.test_channel` | `/filter-reminder` target (optional; defaults to `boh_general`) |
    | `channels.notify_user` | User or DM to notify when a boilout is submitted |
