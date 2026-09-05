@@ -225,14 +225,37 @@ function getNextBoilout(machine, config) {
 
 function getNextFilterChanges(machine) {
   const last_boilout = machine.last_boilout;
+  let intervalDays;
   switch (machine.type) {
     case MachineType.OPEN:
-      return [addBusinessDays(last_boilout, 15)];
+      intervalDays = 10;
+      break;
     case MachineType.PRESSURE:
-      return [addBusinessDays(last_boilout, 10)];
+      intervalDays = 10;
+      break;
     default:
       return [];
   }
+
+  const nextBoilout = machine.next_boilout
+    ? new Date(machine.next_boilout)
+    : null;
+  const nextBoiloutMs =
+    nextBoilout && !Number.isNaN(nextBoilout.getTime())
+      ? nextBoilout.getTime()
+      : null;
+
+  if (nextBoiloutMs == null) {
+    return [addBusinessDays(last_boilout, intervalDays)];
+  }
+
+  const dates = [];
+  for (let days = intervalDays; ; days += intervalDays) {
+    const date = addBusinessDays(last_boilout, days);
+    if (date.getTime() >= nextBoiloutMs) break;
+    dates.push(date);
+  }
+  return dates;
 }
 
 async function getWeekSchedule(teamId, today = new Date()) {
@@ -251,9 +274,11 @@ async function getWeekSchedule(teamId, today = new Date()) {
 
     const filters = next_filters.filter((m) => isDateInThisWeek(m, today));
     if (filters.length > 0) {
-      week_filters.push({
-        machine: config.machines[i],
-        date: new Date(filters[0]),
+      filters.forEach((m) => {
+        week_filters.push({
+          machine: config.machines[i],
+          date: new Date(m),
+        });
       });
     }
   }
