@@ -228,7 +228,7 @@ function getNextFilterChanges(machine) {
   let intervalDays;
   switch (machine.type) {
     case MachineType.OPEN:
-      intervalDays = 10;
+      intervalDays = 15;
       break;
     case MachineType.PRESSURE:
       intervalDays = 10;
