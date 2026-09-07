@@ -39,7 +39,7 @@ Visit `https://YOUR_PUBLIC_HOST/slack/install` (or `http://localhost:3000/slack/
    | `channels.boh_general` | Daily 6pm filter reminders |
    | `channels.test_channel` | `/filter-reminder` target (optional; defaults to `boh_general`) |
    | `channels.notify_user` | User or DM to notify when a boilout is submitted |
-   | `admin_user_ids` | Users allowed to run `/quiz` and `/filter-reminder` |
+   | `admin_user_ids` | Users allowed to run `/quiz`, `/filter-reminder`, and `/post-week` |
    | `timezone` | Calendar dates for “today” (cron still fires on America/New_York) |
 
 4. Invite the bot to every channel listed in that file.
@@ -58,7 +58,7 @@ data/
     question-stats.json
 ```
 
-Slash commands: `/week`, `/month`, `/quiz`, `/filter-reminder`, `/boilout-setup`.
+Slash commands: `/week`, `/post-week`, `/month`, `/quiz`, `/filter-reminder`, `/boilout-setup`.
 
 ## Migrating the original workplace
 

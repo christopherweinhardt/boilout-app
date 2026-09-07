@@ -36,7 +36,10 @@ const {
   loadSettings,
   listConfiguredWorkspaces,
 } = require('./workspace-store');
-const { createInstallationStore } = require('./installation-store');
+const {
+  createInstallationStore,
+  fetchBotToken,
+} = require('./installation-store');
 
 const quizData = require('./quiz-data');
 
@@ -78,9 +81,8 @@ for (const key of requiredEnv) {
   }
 }
 
-const installationStore = createInstallationStore(
-  path.join(DATA_DIR, 'installations'),
-);
+const INSTALLATIONS_DIR = path.join(DATA_DIR, 'installations');
+const installationStore = createInstallationStore(INSTALLATIONS_DIR);
 
 function sendHtml(res, html, status = 200) {
   if (typeof res.send === 'function') {
@@ -229,12 +231,7 @@ async function requireConfiguredSettings(teamId, client, channel, user) {
 }
 
 async function getBotToken(workspaceId) {
-  const installation = await installationStore.fetchInstallation({
-    teamId: workspaceId,
-    enterpriseId: workspaceId,
-    isEnterpriseInstall: false,
-  });
-  return installation?.bot?.token;
+  return fetchBotToken(installationStore, INSTALLATIONS_DIR, workspaceId);
 }
 
 app.message(async ({ message, logger, client, context }) => {
@@ -622,10 +619,11 @@ async function postFilterChangeReminders({
   return { posted: true, filters: due_filters, date };
 }
 
-async function postWeekly({ teamId, channelId, token }) {
+async function postWeekly({ teamId, channelId, token, client }) {
   console.log(`Posting weekly schedule for ${teamId}`);
   const date = new Date();
   const week_boilouts = await getWeekSchedule(teamId, date);
+  const api = client || app.client;
 
   let schedule = JSON.parse(JSON.stringify(WEEKLY_SCHEDULE));
   let header = `*Week of ${getWeekStartText()}*`;
@@ -644,8 +642,8 @@ async function postWeekly({ teamId, channelId, token }) {
     schedule = JSON.parse(JSON.stringify(EMPTY_WEEKLY_SCHEDULE));
     header = `*Week of ${getWeekStartText()}*`;
     schedule[0].text.text = header;
-    await app.client.chat.postMessage({ ...message, blocks: schedule });
-    return;
+    await api.chat.postMessage({ ...message, blocks: schedule });
+    return { posted: true, empty: true };
   }
 
   const data = [
@@ -672,11 +670,12 @@ async function postWeekly({ teamId, channelId, token }) {
   console.log(data);
 
   const slackTableJson = createSlackTableFromJson(data);
-  await app.client.chat.postMessage({
+  await api.chat.postMessage({
     ...message,
     text: "This week's boilout schedule:",
     blocks: slackTableJson.blocks,
   });
+  return { posted: true, empty: false };
 }
 
 async function postMonthly({ teamId, channelId, token }) {
@@ -924,6 +923,47 @@ app.command('/quiz', async ({ command, ack, client, context }) => {
       channel: command.channel_id,
       user: command.user_id,
       text: `Failed to post quiz message: ${err.message}`,
+    });
+  }
+});
+
+app.command('/post-week', async ({ command, ack, client, context }) => {
+  await ack();
+  const teamId = resolveWorkspaceId({ context, command });
+  const settings = await requireConfiguredSettings(
+    teamId,
+    client,
+    command.channel_id,
+    command.user_id,
+  );
+  if (!settings) return;
+
+  if (!isAdmin(settings, command.user_id)) {
+    await postEphemeralSafe(client, {
+      channel: command.channel_id,
+      user: command.user_id,
+      text: "You don't have permission to run this command.",
+    });
+    return;
+  }
+
+  const channelId = settings.channels.boilout;
+  try {
+    const result = await postWeekly({ teamId, channelId, client });
+    const emptyNote = result.empty
+      ? ' (no boilouts or filter changes this week)'
+      : '';
+    await postEphemeralSafe(client, {
+      channel: command.channel_id,
+      user: command.user_id,
+      text: `Posted this week's schedule to <#${channelId}>.${emptyNote}`,
+    });
+  } catch (err) {
+    console.error('Post-week error:', err);
+    await postEphemeralSafe(client, {
+      channel: command.channel_id,
+      user: command.user_id,
+      text: `Failed to post weekly schedule: ${err.message}`,
     });
   }
 });

@@ -24,6 +24,11 @@
         "should_escape": false
       },
       {
+        "command": "/post-week",
+        "description": "Post this week's schedule to the boilout channel (admins only)",
+        "should_escape": false
+      },
+      {
         "command": "/month",
         "description": "Show this month's boilout and filter schedule",
         "should_escape": false
