@@ -236,10 +236,15 @@ async function getBotToken(workspaceId) {
 
 app.message(async ({ message, logger, client, context }) => {
   try {
-    if (message.subtype || message.bot_id) return;
+    if (message.bot_id) return;
+    if (message.subtype && message.subtype !== 'file_share') return;
     const teamId = resolveWorkspaceId({ context, message });
     const settings = await loadSettings(teamId);
-    if (!settings || message.channel !== settings.channels.boilout) return;
+    const submitChannels = [
+      settings?.channels?.boilout,
+      settings?.channels?.test_channel,
+    ].filter(Boolean);
+    if (!settings || !submitChannels.includes(message.channel)) return;
 
     if (message.files && message.files.length > 0) {
       const imageFiles = message.files.filter((f) =>
@@ -247,6 +252,7 @@ app.message(async ({ message, logger, client, context }) => {
       );
 
       if (imageFiles.length > 0) {
+        console.log('Image submit event:', message);
         client.chat.postEphemeral({
           channel: message.channel,
           user: message.user,
@@ -999,10 +1005,10 @@ app.command('/filter-reminder', async ({ command, ack, client, context }) => {
       return;
     }
 
-    const reminderChannel = settings.channels.test_channel;
+    const testChannel = settings.channels.test_channel;
     const result = await postFilterChangeReminders({
       teamId,
-      channelId: reminderChannel,
+      channelId: testChannel,
       client,
       date,
       timezone,
@@ -1032,7 +1038,7 @@ app.command('/filter-reminder', async ({ command, ack, client, context }) => {
     await postEphemeralSafe(client, {
       channel: command.channel_id,
       user: command.user_id,
-      text: `Posted filter change reminder to <#${reminderChannel}> for ${dateLabel}: ${names}`,
+      text: `Posted filter change reminder to <#${testChannel}> for ${dateLabel}: ${names}`,
     });
   } catch (err) {
     console.error('Filter-reminder error:', err);
@@ -1065,7 +1071,7 @@ app.command('/boilout-setup', async ({ command, ack, client, context }) => {
     lines.push(
       `Boilout channel: <#${settings.channels.boilout}>`,
       `BOH channel: <#${settings.channels.boh_general}>`,
-      `Filter reminder channel: <#${settings.channels.test_channel}>`,
+      `Test channel: <#${settings.channels.test_channel}>`,
       `Notify: ${settings.channels.notify_user || '(not set)'}`,
       `Admins: ${settings.admin_user_ids.map((id) => `<@${id}>`).join(', ') || '(none)'}`,
       `Timezone: ${settings.timezone}`,
