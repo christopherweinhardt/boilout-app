@@ -97,9 +97,21 @@ function addBusinessDays(dateLike, days) {
     }
   }
 
+  // If the result is a Sunday, add 1 day to make it a Monday
   if (result.getUTCDay() === 0) {
     result.setDate(result.getDate() + 1);
   }
+
+  // If the result is a Saturday, add 2 days to make it a Monday
+  if (result.getUTCDay() === 6) {
+    result.setDate(result.getDate() + 2);
+  }
+
+  // If the result is a Friday, subtract 1 day to make it a Thursday
+  if (result.getUTCDay() === 5) {
+    result.setDate(result.getDate() - 1);
+  }
+
   return result;
 }
 
